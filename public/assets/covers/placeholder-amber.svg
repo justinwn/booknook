@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 640" width="420" height="640" role="img" aria-label="Placeholder book cover">
+  <rect width="420" height="640" fill="#7c3b1e"/>
+  <rect x="26" y="26" width="368" height="588" fill="none" stroke="#f0c987" stroke-width="3"/>
+  <g fill="#f0c987" opacity="0.9">
+    <rect x="70" y="250" width="280" height="6"/>
+    <rect x="120" y="392" width="180" height="4"/>
+  </g>
+  <g fill="none" stroke="#f0c987" stroke-width="3" opacity="0.8">
+    <path d="M150 300 L210 340 L270 300"/>
+    <path d="M150 330 L210 370 L270 330"/>
+  </g>
+  <g fill="#fbeed6" font-family="Georgia, serif" text-anchor="middle">
+    <text x="210" y="160" font-size="52">Salt &amp;</text>
+    <text x="210" y="216" font-size="52">Compass</text>
+    <text x="210" y="470" font-size="22" letter-spacing="5" opacity="0.8">J. R. OKONKWO</text>
+  </g>
+</svg>

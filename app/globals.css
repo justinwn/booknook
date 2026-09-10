@@ -1,0 +1,565 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   DESIGN TOKENS
+   Every theme defines the same variable set. Components consume the Tailwind
+   utilities in tailwind.config.ts (bg-surface, text-ink, shadow-token, etc.)
+   which point here — never a hardcoded hex/px value in a component.
+
+   Motion and brand-chrome tokens are shared across all themes: physicality
+   (the settle/bounce feel) and the pre-library chrome (login, onboarding)
+   sit outside the mood system.
+   ========================================================================== */
+
+/* Colors are declared twice on purpose: `--x-rgb` holds space-separated
+   channels so Tailwind can apply opacity modifiers (text-ink/75), and `--x`
+   holds the resolved color for plain CSS. Without the triplet, an opacity
+   modifier on a variable color silently produces nothing. */
+:root {
+  /* typography — TEMPORARY pairing, swap here and nowhere else */
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-body: "Work Sans Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* per-theme note pairings — see PaperTreatment in lib/theme/themes.ts */
+  --font-fraunces: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-work-sans: "Work Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-playfair: "Playfair Display Variable", ui-serif, Georgia, serif;
+  --font-dm-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-dm-serif: "DM Serif Display", ui-serif, Georgia, serif;
+  --font-nunito: "Nunito Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-eb-garamond: "EB Garamond Variable", ui-serif, Georgia, serif;
+  --font-quicksand: "Quicksand Variable", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-press-start: "Press Start 2P", ui-monospace, monospace;
+  --font-vt323: "VT323", ui-monospace, monospace;
+  --font-cedarville: "Cedarville Cursive", "Segoe Script", cursive;
+
+  /* motion */
+  --ease-settle: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot — book slotting into place */
+  --ease-gentle: cubic-bezier(0.22, 1, 0.36, 1); /* smooth ease-out — idle motion, UI transitions */
+  --motion-sm: 200ms;
+  --motion-md: 480ms;
+  --motion-lg: 900ms;
+
+  /* brand chrome — used by login + onboarding, independent of library mood */
+  --brand-blush-rgb: 248 220 216;
+  --brand-blush: rgb(var(--brand-blush-rgb));
+  --brand-blush-ink-rgb: 47 35 32;
+  --brand-blush-ink: rgb(var(--brand-blush-ink-rgb));
+  --brand-gallery-rgb: 242 241 239;
+  --brand-gallery: rgb(var(--brand-gallery-rgb));
+  --brand-gallery-ink-rgb: 28 26 23;
+  --brand-gallery-ink: rgb(var(--brand-gallery-ink-rgb));
+  --brand-selected-rgb: 158 47 40;
+  --brand-selected: rgb(var(--brand-selected-rgb));
+
+  /* hairline on glass: a highlight on dark moods, a shadow line on light ones */
+  --glass-edge: rgb(255 255 255 / 0.12);
+}
+
+/* ---- Cozy room: nocturnal apartment, blue window, amber lamp ---- */
+[data-theme="cozy-room"] {
+  --color-bg-rgb: 18 17 26;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 36 34 50;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 48 45 66;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 240 235 228;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 187 183 203;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 128 124 146;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 231 168 90;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 246 214 168;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 66 62 88;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 242 236 224;
+  --color-paper: rgb(var(--color-paper-rgb));
+  --radius-sm: 6px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --shadow-md: 0 10px 28px -10px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 26px 68px -18px rgba(0, 0, 0, 0.7);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glass-edge: rgb(255 255 255 / 0.14);
+}
+
+/* ---- Magical garden: night bookshop, deep violet, lantern gold ---- */
+[data-theme="magical-garden"] {
+  --color-bg-rgb: 16 14 30;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 34 27 56;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 46 37 72;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 243 236 249;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 195 183 214;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 135 123 158;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 232 164 76;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 226 176 216;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 68 55 100;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 246 239 226;
+  --color-paper: rgb(var(--color-paper-rgb));
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 22px;
+  --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 28px 72px -18px rgba(0, 0, 0, 0.75);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glass-edge: rgb(255 255 255 / 0.14);
+}
+
+/* ---- Seaside cafe: daylight, sea glass, terracotta — the one light mood ---- */
+[data-theme="seaside-cafe"] {
+  --color-bg-rgb: 238 243 240;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 255 253 248;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 240 246 243;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 27 52 54;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 79 106 106;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 133 156 154;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 32 138 134;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 173 216 210;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 205 220 216;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 253 251 244;
+  --color-paper: rgb(var(--color-paper-rgb));
+  --radius-sm: 8px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --shadow-md: 0 10px 26px -10px rgba(30, 70, 70, 0.22);
+  --shadow-lg: 0 28px 64px -18px rgba(30, 70, 70, 0.26);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-edge: rgb(20 60 60 / 0.12);
+}
+
+/* ---- Minecraft: spruce and lantern light; square corners on purpose ---- */
+[data-theme="minecraft"] {
+  --color-bg-rgb: 20 18 14;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 44 36 26;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 58 48 34;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 240 234 219;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 194 183 156;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 134 124 102;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 124 168 74;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 189 214 148;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 82 68 48;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 232 228 216;
+  --color-paper: rgb(var(--color-paper-rgb));
+  /* blocky by nature — the one theme that keeps hard corners */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 2px;
+  --shadow-md: 0 8px 0 -2px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 14px 0 -4px rgba(0, 0, 0, 0.5);
+  --shadow-inset: inset 0 2px 0 rgba(255, 255, 255, 0.06);
+  --glass-edge: rgb(255 255 255 / 0.12);
+}
+
+/* Dark academia: no colour anywhere and no rounding anywhere. Every value
+   below is neutral by construction, so a stray tinted token would show
+   immediately rather than blending in. */
+[data-theme="dark-academia"] {
+  --color-bg-rgb: 12 12 13;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 26 26 28;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 38 38 41;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 244 243 241;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 186 185 182;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 128 128 130;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 238 238 236;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 168 168 168;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 74 74 78;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 244 243 241;
+  --color-paper: rgb(var(--color-paper-rgb));
+  /* sharp: not one rounded corner in this room */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --shadow-md: 0 10px 24px -14px rgba(0, 0, 0, 0.85);
+  --shadow-lg: 0 20px 44px -20px rgba(0, 0, 0, 0.9);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glass-edge: rgb(255 255 255 / 0.16);
+}
+
+/* fallback so unthemed shells still render fully tokenized */
+:root {
+  --color-bg-rgb: 18 17 26;
+  --color-bg: rgb(var(--color-bg-rgb));
+  --color-surface-rgb: 36 34 50;
+  --color-surface: rgb(var(--color-surface-rgb));
+  --color-surface-raised-rgb: 54 43 32;
+  --color-surface-raised: rgb(var(--color-surface-raised-rgb));
+  --color-ink-rgb: 243 236 224;
+  --color-ink: rgb(var(--color-ink-rgb));
+  --color-ink-muted-rgb: 203 187 160;
+  --color-ink-muted: rgb(var(--color-ink-muted-rgb));
+  --color-ink-soft-rgb: 143 127 104;
+  --color-ink-soft: rgb(var(--color-ink-soft-rgb));
+  --color-accent-rgb: 193 85 47;
+  --color-accent: rgb(var(--color-accent-rgb));
+  --color-accent-soft-rgb: 232 201 160;
+  --color-accent-soft: rgb(var(--color-accent-soft-rgb));
+  --color-border-rgb: 74 60 44;
+  --color-border: rgb(var(--color-border-rgb));
+  --color-paper-rgb: 239 227 205;
+  --color-paper: rgb(var(--color-paper-rgb));
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.6);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Glass surfaces — panels that sit over the room read as tinted glass
+   rather than opaque cards, so the environment stays visible behind them. */
+@layer components {
+  .glass {
+    background: rgb(var(--color-surface-rgb) / 0.68);
+    backdrop-filter: blur(20px) saturate(1.15);
+    -webkit-backdrop-filter: blur(20px) saturate(1.15);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--shadow-lg);
+  }
+  /* Chrome that sits ON imagery, not on an app surface. It must not inherit
+     the mood's surface colour: a daylight theme's near-white surface makes
+     white label text disappear against a bright wallpaper. */
+  .glass-dark {
+    background: rgb(12 10 14 / 0.46);
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.7);
+  }
+  .glass-dark-strong {
+    background: rgb(12 10 14 / 0.66);
+    backdrop-filter: blur(26px) saturate(1.15);
+    -webkit-backdrop-filter: blur(26px) saturate(1.15);
+    border: 1px solid rgb(255 255 255 / 0.22);
+    box-shadow: 0 22px 52px -20px rgb(0 0 0 / 0.75);
+  }
+  .glass-strong {
+    background: rgb(var(--color-surface-rgb) / 0.86);
+    backdrop-filter: blur(28px) saturate(1.2);
+    -webkit-backdrop-filter: blur(28px) saturate(1.2);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* Subtle tactile paper grain, used behind cards/notes/paper elements.
+   Lives in @layer components so Tailwind's utilities still win — an
+   unlayered `position: relative` here would silently override `absolute`
+   on every element that carries this class. */
+@layer components {
+  .grain-overlay {
+    position: relative;
+    isolation: isolate;
+  }
+}
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/assets/texture-grain.svg");
+  background-size: 180px 180px;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ---- book add-to-shelf: physically dropped in, eases with a settle ---- */
+@keyframes slot-in {
+  0% {
+    transform: translateY(-56px) scale(0.92);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(4px) scale(1.01);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@layer utilities {
+  .animate-slot-in {
+    animation: slot-in var(--motion-lg) var(--ease-settle) both;
+  }
+}
+
+/* ---- book composition shuffle: a hand setting the next book down ---- */
+@keyframes book-settle {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) rotate(-1deg) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+@layer utilities {
+  .animate-book-settle {
+    animation: book-settle var(--motion-lg) var(--ease-settle) both;
+  }
+}
+
+/* ---- a book being put away: it lifts a little, crosses to the shelf and
+   shrinks into its slot. It used to tumble end over end, which read as a stunt
+   and made the arrival hard to follow. Motion carries the eye to the slot; it
+   is not the event itself. ---- */
+@keyframes book-flight {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  55% {
+    transform: translate(calc(var(--fly-dx) * 0.58), calc(var(--fly-dy) * 0.58 - 22px))
+      scale(var(--fly-mid-scale));
+  }
+  100% {
+    transform: translate(var(--fly-dx), var(--fly-dy)) scale(var(--fly-scale));
+  }
+}
+@layer utilities {
+  .animate-book-flight {
+    animation: book-flight var(--fly-duration, 720ms) cubic-bezier(0.32, 0.08, 0.24, 1) both;
+  }
+}
+
+/* ---- the wellness sprite: a walk cycle plus a slow stroll across the clock ----
+   `steps()` over background-position turns the strip into frames; the stroll
+   flips the character at each end so it always faces where it is going. */
+@keyframes sprite-step {
+  from {
+    background-position-x: 0px;
+  }
+  to {
+    /* stepped in PIXELS, not percent: a percentage background-position is
+       resolved against the image's overflow, not its width, so a 12-frame
+       strip drifts ~8% per frame and slices the character in half */
+    background-position-x: calc(-1 * var(--sprite-strip, 768px));
+  }
+}
+@keyframes sprite-stroll {
+  0% {
+    transform: translateX(0) scaleX(1);
+  }
+  46% {
+    transform: translateX(var(--stroll-x, 200px)) scaleX(1);
+  }
+  50% {
+    transform: translateX(var(--stroll-x, 200px)) scaleX(-1);
+  }
+  96% {
+    transform: translateX(0) scaleX(-1);
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+/* ---- the nudge bubble leaving: it shrinks toward the character and fades,
+   so dismissing reads as the reminder going away rather than being cut. ---- */
+@keyframes bubble-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  /* a small breath outward first, so the eye registers the answer landing
+     before the bubble goes; a straight fade at this size is over too fast
+     to read as anything but a cut */
+  35% {
+    opacity: 0.92;
+    transform: translateY(-3px) scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.84);
+  }
+}
+@layer utilities {
+  .animate-bubble-out {
+    animation: bubble-out var(--bubble-out-ms, 320ms) cubic-bezier(0.36, 0, 0.66, 1) forwards;
+    /* shrinks toward the character rather than toward its own middle */
+    transform-origin: bottom left;
+  }
+}
+
+/* ---- the login book opening ----
+   The page arrives as a closed book held at an angle, straightens, and its
+   cover swings open to the left. Three parts, one timeline: the book's own
+   tilt, the cover's hinge, and the right-hand page appearing from behind it.
+   Everything is off for prefers-reduced-motion, which lands on the open
+   spread with no movement at all. ---- */
+@keyframes book-straighten {
+  0% {
+    transform: rotateY(-26deg) rotateX(12deg) rotateZ(-7deg) scale(0.88);
+  }
+  100% {
+    transform: rotateY(-4deg) rotateX(3deg) rotateZ(0deg) scale(1);
+  }
+}
+@keyframes book-leaf-open {
+  /* The left page IS the front cover: folded over the right page while the
+     book is closed (180deg, showing its outer face), swinging down to lie
+     flat as the inside-left page. Its own perspective, because an ancestor
+     with overflow:hidden flattens an inherited 3D context. */
+  0%,
+  18% {
+    transform: perspective(1700px) rotateY(180deg);
+  }
+  100% {
+    transform: perspective(1700px) rotateY(0deg);
+  }
+}
+@keyframes book-content-in {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@layer utilities {
+  .animate-book-straighten {
+    animation: book-straighten 1500ms cubic-bezier(0.22, 0.61, 0.3, 1) both;
+  }
+  .animate-book-leaf-open {
+    animation: book-leaf-open 1500ms cubic-bezier(0.42, 0.02, 0.24, 1) both;
+  }
+  .animate-book-content-in {
+    animation: book-content-in 1700ms ease-out both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-book-straighten,
+  .animate-book-leaf-open,
+  .animate-book-content-in {
+    animation: none;
+  }
+}
+
+/* ---- first run: the one thing to do next ----
+   A slow breath of light around Add book while the shelves are still empty.
+   It stops the moment there is a book to look at, so it never becomes part
+   of the furniture. ---- */
+/* light only, no scale: a button that changes size under the cursor is a
+   moving target, and it never settles for anything watching for stability */
+@keyframes beckon {
+  0%,
+  100% {
+    box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.75),
+      0 0 0 1px rgb(var(--color-accent-rgb) / 0.55),
+      0 0 22px 4px rgb(var(--color-accent-rgb) / 0.45);
+  }
+  50% {
+    box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.75),
+      0 0 0 4px rgb(var(--color-accent-rgb) / 0.35),
+      0 0 46px 14px rgb(var(--color-accent-rgb) / 0.85);
+  }
+}
+@layer utilities {
+  .animate-beckon {
+    animation: beckon 2400ms ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-beckon {
+    animation: none;
+    box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgb(var(--color-accent-rgb) / 0.55), 0 0 32px 8px rgb(var(--color-accent-rgb) / 0.6);
+  }
+}
+
+/* ---- arriving at the shelves: the room hands over rather than cutting ---- */
+@keyframes shelf-in {
+  from {
+    opacity: 0;
+    transform: scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@layer utilities {
+  .animate-shelf-in {
+    animation: shelf-in 420ms var(--ease-gentle) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slot-in,
+  .animate-book-settle,
+  .animate-shelf-in,
+  .animate-book-flight {
+    animation: none;
+  }
+  /* the sprite holds still, but still delivers its nudges */
+  [style*="sprite-step"] {
+    animation: none !important;
+  }
+}

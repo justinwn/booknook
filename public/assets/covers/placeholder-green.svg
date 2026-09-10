@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 640" width="420" height="640" role="img" aria-label="Placeholder book cover">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2f4739"/>
+      <stop offset="100%" stop-color="#1b2b22"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="640" fill="url(#g)"/>
+  <g fill="none" stroke="#c8d6b9" stroke-width="2" opacity="0.55">
+    <circle cx="210" cy="300" r="120"/>
+    <circle cx="210" cy="300" r="86"/>
+    <path d="M90 420 C150 360 270 360 330 420"/>
+    <path d="M90 452 C150 392 270 392 330 452"/>
+  </g>
+  <g fill="#eef3e6" font-family="Georgia, serif" text-anchor="middle">
+    <text x="210" y="120" font-size="26" letter-spacing="6" opacity="0.75">MAEVE ORLANDO</text>
+    <text x="210" y="546" font-size="46">The Quiet</text>
+    <text x="210" y="596" font-size="46">Orchard</text>
+  </g>
+</svg>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QrCode, Loader2, BookOpen } from "lucide-react";
+import { QrCode, Loader2, BookOpen, ChevronDown } from "lucide-react";
 import type { Book, BookStatus } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import type { BookLookupResult } from "@/lib/books/providers";
@@ -436,9 +436,8 @@ export function BookEditorScreen({
           </div>
 
           {title && (
-            <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-body text-xs text-ink-muted">
-              <span className="text-ink">{title}</span>
-              <span>· {author} · shelves under</span>
+            <p className="mt-3 font-body text-xs text-ink-muted">
+              <span className="text-ink">{title}</span> · shelves under{" "}
               <label className="sr-only" htmlFor="book-dewey-class">
                 Shelf category
               </label>
@@ -446,18 +445,21 @@ export function BookEditorScreen({
                   spine; picking a class here only sets which shelf it's on —
                   a book Open Library has no classification for lands at the
                   800 default with no way to move it otherwise */}
-              <select
-                id="book-dewey-class"
-                value={deweyClassFor(dewey).code}
-                onChange={(e) => setDewey(Number(e.target.value))}
-                className="rounded-token border border-border bg-surface-raised/70 px-1.5 py-0.5 font-body text-xs text-ink focus:border-accent focus:outline-none"
-              >
-                {DEWEY_CLASSES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {formatClassCode(c.code)} {c.label}
-                  </option>
-                ))}
-              </select>
+              <span className="relative inline-flex items-center align-middle">
+                <select
+                  id="book-dewey-class"
+                  value={deweyClassFor(dewey).code}
+                  onChange={(e) => setDewey(Number(e.target.value))}
+                  className="cursor-pointer appearance-none border-0 border-b border-dotted border-accent/60 bg-transparent py-0 pl-0 pr-4 font-body text-xs font-medium text-accent underline-offset-2 focus:outline-none"
+                >
+                  {DEWEY_CLASSES.map((c) => (
+                    <option key={c.code} value={c.code} className="bg-surface text-ink">
+                      {formatClassCode(c.code)} {c.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-0 h-3 w-3 text-accent" strokeWidth={2} />
+              </span>
             </p>
           )}
 

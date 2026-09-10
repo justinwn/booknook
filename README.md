@@ -16,9 +16,12 @@ are stubbed, everything else is real). To connect a project:
 cp .env.local.example .env.local   # then fill in the two values
 ```
 
-Apply `supabase/migrations/0001_profiles.sql` to create the `profiles` table
-(holds `theme_id`) with row-level security. For Google login, enable the
-Google provider in Supabase Auth and add
+Apply the SQL files under `supabase/migrations/` in order — `0001_profiles`
+creates the `profiles` table (`theme_id`), `0002_library` the per-reader
+library document, and `0003_avatars` a public `avatars` storage bucket for
+readers who upload their own photo (a Google identity brings its own, so
+that case never touches this bucket). All with row-level security. For
+Google login, enable the Google provider in Supabase Auth and add
 `<your-origin>/auth/callback` as an authorized redirect URL.
 
 ## Architecture

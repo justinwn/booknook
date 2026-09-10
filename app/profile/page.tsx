@@ -12,8 +12,10 @@ import { FeaturedBookPicker } from "@/components/profile/FeaturedBookPicker";
 import { FeaturedSlot } from "@/components/profile/FeaturedSlot";
 import { ShareLibrary } from "@/components/profile/ShareLibrary";
 import { ProfileName } from "@/components/profile/ProfileName";
+import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { signOut } from "@/lib/auth/auth";
 import { loadAccount, type Account } from "@/lib/profile/account";
+import { ensureSlug } from "@/lib/profile/slug";
 import { Button } from "@/components/ui/Button";
 import { ThemedFrame } from "@/components/theme/ThemedFrame";
 import type { Book } from "@/lib/types";
@@ -27,13 +29,14 @@ export default function ProfilePage() {
   const [picking, setPicking] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [slug, setSlug] = useState<string | null>(null);
 
   useEffect(() => {
     setBooks(loadBooks() ?? []);
     setFeatured(loadFeatured());
     setLoaded(true);
     loadAccount().then(setAccount);
+    ensureSlug().then(setSlug);
     // the account's copy of the shelf and the pinned four, once it arrives
     pullLibrary().then((doc) => {
       if (doc?.books) setBooks(doc.books);
@@ -74,18 +77,11 @@ export default function ProfilePage() {
         </Link>
 
         <header className="mt-10 flex flex-wrap items-center gap-5">
-          {account?.avatarUrl && !avatarFailed ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={account.avatarUrl}
-              alt=""
-              referrerPolicy="no-referrer"
-              onError={() => setAvatarFailed(true)}
-              className="h-20 w-20 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-20 w-20 shrink-0 rounded-full bg-gallery-ink/10" aria-hidden />
-          )}
+          <ProfileAvatar
+            avatarUrl={account?.avatarUrl ?? null}
+            locked={account?.provider === "google"}
+            onChange={(url) => setAccount((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
+          />
           <div className="min-w-0">
             <ProfileName
               accountName={account?.name ?? null}
@@ -139,7 +135,7 @@ export default function ProfilePage() {
         </section>
 
         <section className="mt-14 border-t border-gallery-ink/10 pt-10">
-          <ShareLibrary slug="justine" />
+          <ShareLibrary slug={slug} />
         </section>
 
       </div>

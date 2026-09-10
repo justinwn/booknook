@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QrCode, Loader2, BookOpen } from "lucide-react";
+import { QrCode, Loader2, BookOpen, ChevronDown } from "lucide-react";
 import type { Book, BookStatus } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import type { BookLookupResult } from "@/lib/books/providers";
 import { BookNote } from "@/components/book/BookNote";
 import { Book3D } from "@/components/book/Book3D";
-import { deweyClassFor } from "@/lib/library/dewey";
+import { deweyClassFor, DEWEY_CLASSES, formatClassCode } from "@/lib/library/dewey";
 import { extractSpineColor, extractPalette } from "@/lib/books/dominant-color";
 import { SpineColorPicker } from "@/components/book/SpineColorPicker";
 import { spineColorFor } from "@/lib/spine-color";
@@ -437,8 +437,29 @@ export function BookEditorScreen({
 
           {title && (
             <p className="mt-3 font-body text-xs text-ink-muted">
-              <span className="text-ink">{title}</span> · {author} · shelves under{" "}
-              {deweyClassFor(dewey).code.toString().padStart(3, "0")} {deweyClassFor(dewey).label}
+              <span className="text-ink">{title}</span> · shelves under{" "}
+              <label className="sr-only" htmlFor="book-dewey-class">
+                Shelf category
+              </label>
+              {/* the lookup's own number (813.54) is what prints on the book's
+                  spine; picking a class here only sets which shelf it's on —
+                  a book Open Library has no classification for lands at the
+                  800 default with no way to move it otherwise */}
+              <span className="relative inline-flex items-center align-middle">
+                <select
+                  id="book-dewey-class"
+                  value={deweyClassFor(dewey).code}
+                  onChange={(e) => setDewey(Number(e.target.value))}
+                  className="cursor-pointer appearance-none border-0 border-b border-dotted border-accent/60 bg-transparent py-0 pl-0 pr-4 font-body text-xs font-medium text-accent underline-offset-2 focus:outline-none"
+                >
+                  {DEWEY_CLASSES.map((c) => (
+                    <option key={c.code} value={c.code} className="bg-surface text-ink">
+                      {formatClassCode(c.code)} {c.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-0 h-3 w-3 text-accent" strokeWidth={2} />
+              </span>
             </p>
           )}
 

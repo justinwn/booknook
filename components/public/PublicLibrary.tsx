@@ -10,6 +10,7 @@ import { Book3D } from "@/components/book/Book3D";
 import { BookDetailCard } from "@/components/book/BookDetailCard";
 import { MadeBy } from "@/components/brand/MadeBy";
 import { Wordmark } from "@/components/brand/Wordmark";
+import { ThemedFrame } from "@/components/theme/ThemedFrame";
 
 /**
  * The read-only room a share link opens. Same theme and shelves as the
@@ -57,19 +58,21 @@ export function PublicLibrary({
             <h2 className="font-body text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
               Featured
             </h2>
-            <div className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
-              {featured.map((book) => (
-                <button
-                  key={book.id}
-                  type="button"
-                  onClick={() => setActiveBook(book)}
-                  aria-label={`${book.title} by ${book.author}, featured`}
-                  className="flex aspect-[2/3] w-full items-center justify-center transition-transform hover:-translate-y-1"
-                >
-                  <Book3D book={book} height={190} />
-                </button>
-              ))}
-            </div>
+            <ThemedFrame themeId={themeId} className="mt-4 shadow-token">
+              <div className="grid grid-cols-2 gap-5 p-6 sm:grid-cols-4 sm:gap-6 sm:p-8">
+                {featured.map((book) => (
+                  <button
+                    key={book.id}
+                    type="button"
+                    onClick={() => setActiveBook(book)}
+                    aria-label={`${book.title} by ${book.author}, featured`}
+                    className="flex aspect-[2/3] w-full items-center justify-center transition-transform hover:-translate-y-1"
+                  >
+                    <Book3D book={book} height={190} />
+                  </button>
+                ))}
+              </div>
+            </ThemedFrame>
           </section>
         )}
 

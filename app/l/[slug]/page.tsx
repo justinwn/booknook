@@ -50,9 +50,23 @@ async function loadPublicLibrary(slug: string) {
     .map((id) => (id ? books.find((b) => b.id === id) ?? null : null))
     .filter((b): b is Book => b !== null);
 
+  // the profile page shows Google's name as a fallback the moment you're
+  // signed in, but that never gets written to displayName unless you
+  // actually edit it — the share page has no session to fall back on that
+  // way, so it asks the identity itself when the library document is blank
+  let displayName = typeof doc.displayName === "string" ? doc.displayName : "";
+  if (!displayName) {
+    const { data: identity } = await supabase.auth.admin.getUserById(profile.id);
+    const meta = (identity.user?.user_metadata ?? {}) as Record<string, unknown>;
+    displayName =
+      (typeof meta.full_name === "string" && meta.full_name) ||
+      (typeof meta.name === "string" && meta.name) ||
+      "";
+  }
+
   return {
     themeId: toThemeId(profile.theme_id),
-    displayName: typeof doc.displayName === "string" ? doc.displayName : "",
+    displayName,
     books,
     featured,
   };

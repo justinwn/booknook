@@ -7,7 +7,7 @@ import type { PaperTreatment } from "@/lib/theme/themes";
 import type { BookLookupResult } from "@/lib/books/providers";
 import { BookNote } from "@/components/book/BookNote";
 import { Book3D } from "@/components/book/Book3D";
-import { deweyClassFor } from "@/lib/library/dewey";
+import { deweyClassFor, DEWEY_CLASSES, formatClassCode } from "@/lib/library/dewey";
 import { extractSpineColor, extractPalette } from "@/lib/books/dominant-color";
 import { SpineColorPicker } from "@/components/book/SpineColorPicker";
 import { spineColorFor } from "@/lib/spine-color";
@@ -436,9 +436,28 @@ export function BookEditorScreen({
           </div>
 
           {title && (
-            <p className="mt-3 font-body text-xs text-ink-muted">
-              <span className="text-ink">{title}</span> · {author} · shelves under{" "}
-              {deweyClassFor(dewey).code.toString().padStart(3, "0")} {deweyClassFor(dewey).label}
+            <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-body text-xs text-ink-muted">
+              <span className="text-ink">{title}</span>
+              <span>· {author} · shelves under</span>
+              <label className="sr-only" htmlFor="book-dewey-class">
+                Shelf category
+              </label>
+              {/* the lookup's own number (813.54) is what prints on the book's
+                  spine; picking a class here only sets which shelf it's on —
+                  a book Open Library has no classification for lands at the
+                  800 default with no way to move it otherwise */}
+              <select
+                id="book-dewey-class"
+                value={deweyClassFor(dewey).code}
+                onChange={(e) => setDewey(Number(e.target.value))}
+                className="rounded-token border border-border bg-surface-raised/70 px-1.5 py-0.5 font-body text-xs text-ink focus:border-accent focus:outline-none"
+              >
+                {DEWEY_CLASSES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {formatClassCode(c.code)} {c.label}
+                  </option>
+                ))}
+              </select>
             </p>
           )}
 

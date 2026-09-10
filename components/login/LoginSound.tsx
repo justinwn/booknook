@@ -15,7 +15,12 @@ const FADE_MS = 1400;
  * the same mount, so the two stay in step without measuring anything.
  */
 const LEAF_HOLD_MS = 270;
-const KEY = "librari:login-sound";
+/**
+ * Versioned: sound now defaults on, and the old key holds "off" for anyone
+ * who switched it off while it was being built. Bumping the name retires
+ * those without touching the reader's ability to switch it off again.
+ */
+const KEY = "librari:login-sound-v2";
 
 function loadPreference(): boolean {
   if (typeof window === "undefined") return true;

@@ -3,20 +3,23 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Book } from "@/lib/types";
 import type { Reminder } from "@/lib/profile/reminders-store";
+import type { WellnessSettings } from "@/lib/profile/wellness-store";
 
 /**
  * The reader's library, as it is stored on their account.
  *
- * Every field here is content they typed or chose and would be upset to lose;
- * device-shaped settings (the ambient mix, nudge timers) deliberately stay in
- * localStorage, because "quiet on my work laptop, loud at home" is a sane
- * thing to want and syncing it would be a bug.
+ * Every field here is content they typed or chose and would be upset to lose
+ * or not find waiting on the next device. The ambient mix stays local by
+ * itself — "quiet on my work laptop, loud at home" is a sane thing to want —
+ * but the nudge schedule is a choice about the reader, not the device, so it
+ * follows them the same as their reminders do.
  */
 export interface LibraryDoc {
   books: Book[];
   featured: (string | null)[];
   reminders: Reminder[];
   displayName: string;
+  wellness: WellnessSettings;
 }
 
 const TABLE = "libraries";
@@ -71,6 +74,7 @@ export async function pullLibrary(): Promise<Partial<LibraryDoc> | null> {
     featured: Array.isArray(doc.featured) ? doc.featured : undefined,
     reminders: Array.isArray(doc.reminders) ? doc.reminders : undefined,
     displayName: typeof doc.displayName === "string" ? doc.displayName : undefined,
+    wellness: doc.wellness && typeof doc.wellness === "object" ? doc.wellness : undefined,
   };
 }
 

@@ -28,18 +28,22 @@ const SINCE_KEY = "librari:wellness-since";
 /** how long "Snooze" holds a nudge back before it asks again */
 export const SNOOZE_MS = 5 * 60_000;
 
+/** merges rather than replaces, so a new nudge kind (or a partial doc from
+ * the account) doesn't break settings that were already saved */
+export function mergeWellness(partial: Partial<WellnessSettings> | undefined | null): WellnessSettings {
+  return {
+    water: { ...DEFAULT_WELLNESS.water, ...partial?.water },
+    stretch: { ...DEFAULT_WELLNESS.stretch, ...partial?.stretch },
+    break: { ...DEFAULT_WELLNESS.break, ...partial?.break },
+  };
+}
+
 export function loadWellness(): WellnessSettings {
   if (typeof window === "undefined") return DEFAULT_WELLNESS;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_WELLNESS;
-    const parsed = JSON.parse(raw) as Partial<WellnessSettings>;
-    // merge rather than replace, so a new nudge kind doesn't break saved settings
-    return {
-      water: { ...DEFAULT_WELLNESS.water, ...parsed.water },
-      stretch: { ...DEFAULT_WELLNESS.stretch, ...parsed.stretch },
-      break: { ...DEFAULT_WELLNESS.break, ...parsed.break },
-    };
+    return mergeWellness(JSON.parse(raw) as Partial<WellnessSettings>);
   } catch {
     return DEFAULT_WELLNESS;
   }

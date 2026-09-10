@@ -99,14 +99,16 @@ function LoginScreen() {
   async function handleGoogle() {
     setErrors({});
     setGoogleLoading(true);
-    const next = mode === "sign-up" ? "/onboarding/theme" : "/library";
-    if (mode === "sign-up") startEmptyLibrary();
-    const result = await signInWithGoogle(next);
+    // Google is one button for both creating and returning to an account —
+    // Supabase only reveals which one this was once the redirect lands back
+    // on /library, so that page (not this tab's sign-in/sign-up toggle)
+    // decides whether to send them on to the picker. See its own effect.
+    const result = await signInWithGoogle("/library");
     if (!result.ok) {
       setGoogleLoading(false);
       // Demo mode (no Supabase project attached) still walks the flow.
       if (!isSupabaseConfigured) {
-        router.push(next);
+        router.push("/library");
         return;
       }
       setErrors({ form: result.message });

@@ -21,10 +21,12 @@ export function PublicLibrary({
   themeId,
   displayName,
   books,
+  featured,
 }: {
   themeId: ThemeId;
   displayName: string;
   books: Book[];
+  featured: Book[];
 }) {
   const theme = getTheme(themeId);
   const shelves = getShelves(theme);
@@ -49,6 +51,27 @@ export function PublicLibrary({
         <p className="mt-2 font-body text-sm text-white/60">
           {books.length} book{books.length === 1 ? "" : "s"} · {theme.name}
         </p>
+
+        {featured.length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-body text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+              Featured
+            </h2>
+            <div className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
+              {featured.map((book) => (
+                <button
+                  key={book.id}
+                  type="button"
+                  onClick={() => setActiveBook(book)}
+                  aria-label={`${book.title} by ${book.author}, featured`}
+                  className="flex aspect-[2/3] w-full items-center justify-center transition-transform hover:-translate-y-1"
+                >
+                  <Book3D book={book} height={190} />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {shelves.map((shelf) => {
           const onShelf = sortBooks(

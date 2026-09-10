@@ -6,6 +6,7 @@ import { useLibraryTheme } from "@/lib/theme/theme-context";
 import { ROOM_SLOT_MAPS, getRoomSlots } from "@/lib/library/slot-maps";
 import { loadBooks, saveBooks } from "@/lib/profile/library-store";
 import { pullLibrary, pushLibrary } from "@/lib/sync/library-sync";
+import { hasThemePreference } from "@/lib/profile/theme-preference";
 import type { Book } from "@/lib/types";
 import { Wallpaper } from "@/components/library/Wallpaper";
 import { ShelfHotspots } from "@/components/library/ShelfHotspots";
@@ -44,6 +45,23 @@ export default function LibraryPage() {
   /** The shelves hold exactly what the reader has added — nothing is seeded. */
   const [books, setBooks] = useState<Book[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  /**
+   * The picker is part of setting an account up, not part of arriving. Anyone
+   * who has chosen a room stays here; anyone who never has is sent to choose
+   * one, which covers a first Google sign-in that came through the sign-in
+   * button rather than sign-up. `replace`, so Back does not bounce them
+   * between the two.
+   */
+  useEffect(() => {
+    let active = true;
+    hasThemePreference().then((chosen) => {
+      if (active && !chosen) router.replace("/onboarding/theme");
+    });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   /**
    * The browser copy paints first so the shelves are never empty while a

@@ -4,8 +4,19 @@ import { THEMES, DEFAULT_THEME_ID } from "@/lib/theme/themes";
 import type { Book, ThemeId } from "@/lib/types";
 import { PublicLibrary } from "@/components/public/PublicLibrary";
 
+/**
+ * Next.js caches a Server Component's data fetches indefinitely by default —
+ * including what Supabase's client does under the hood — unless told
+ * otherwise. A share link has to reflect whatever is on the shelves right
+ * now, not whatever it happened to be the first time anyone opened this
+ * page, so both caches are switched off here.
+ */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface LibraryRow {
   books?: Book[];
+  featured?: (string | null)[];
   displayName?: string;
 }
 
@@ -33,10 +44,17 @@ async function loadPublicLibrary(slug: string) {
     .maybeSingle();
   const doc = (library?.data ?? {}) as LibraryRow;
 
+  const books = Array.isArray(doc.books) ? doc.books : [];
+  const featuredIds = Array.isArray(doc.featured) ? doc.featured : [];
+  const featured = featuredIds
+    .map((id) => (id ? books.find((b) => b.id === id) ?? null : null))
+    .filter((b): b is Book => b !== null);
+
   return {
     themeId: toThemeId(profile.theme_id),
     displayName: typeof doc.displayName === "string" ? doc.displayName : "",
-    books: Array.isArray(doc.books) ? doc.books : [],
+    books,
+    featured,
   };
 }
 
@@ -49,5 +67,12 @@ export default async function PublicLibraryPage({ params }: { params: { slug: st
   const lib = await loadPublicLibrary(params.slug);
   if (!lib) notFound();
 
-  return <PublicLibrary themeId={lib.themeId} displayName={lib.displayName} books={lib.books} />;
+  return (
+    <PublicLibrary
+      themeId={lib.themeId}
+      displayName={lib.displayName}
+      books={lib.books}
+      featured={lib.featured}
+    />
+  );
 }

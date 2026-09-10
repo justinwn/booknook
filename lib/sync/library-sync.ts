@@ -126,6 +126,23 @@ export async function flushLibrary(): Promise<void> {
 }
 
 /**
+ * A change made just before the tab closes, the app is backgrounded, or the
+ * reader navigates away has up to DEBOUNCE_MS to reach the server before
+ * that timer is lost along with everything else on the page — sign-out was
+ * the only place that flushed early, so any other kind of leaving could
+ * quietly drop the last change while it still looked saved locally.
+ * `visibilitychange` fires while the page is still very much alive (switching
+ * tabs, not yet torn down), which is what makes the flush's request likely to
+ * actually complete — `beforeunload`/`unload` fire too late for that,
+ * especially on mobile.
+ */
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void flushLibrary();
+  });
+}
+
+/**
  * Forgets this session's sync state. Called on sign-out so the next reader on
  * this browser cannot have their first local write land on the last reader's
  * row before their own copy has been read.

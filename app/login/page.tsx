@@ -325,13 +325,13 @@ function LoginScreen() {
                     </button>
                   </p>
 
-                  {/* say who is holding the account, and be honest when nothing
-                      is holding it yet */}
-                  <p className="mt-2 text-center font-body text-[11px] leading-relaxed text-gallery-ink/45">
-                    {isSupabaseConfigured
-                      ? "Accounts are created and secured by Supabase."
-                      : "Supabase isn't connected yet, so accounts run in demo mode."}
-                  </p>
+                  {/* nothing to say once accounts are real; the demo-mode line
+                      stays, because signing up into nothing needs saying */}
+                  {!isSupabaseConfigured && (
+                    <p className="mt-2 text-center font-body text-[11px] leading-relaxed text-gallery-ink/45">
+                      Supabase isn&apos;t connected yet, so accounts run in demo mode.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -6,6 +6,7 @@ import { useLibraryTheme } from "@/lib/theme/theme-context";
 import { ROOM_SLOT_MAPS, getRoomSlots } from "@/lib/library/slot-maps";
 import { loadBooks, saveBooks } from "@/lib/profile/library-store";
 import { pullLibrary, pushLibrary } from "@/lib/sync/library-sync";
+import { hasThemePreference } from "@/lib/profile/theme-preference";
 import type { Book } from "@/lib/types";
 import { Wallpaper } from "@/components/library/Wallpaper";
 import { ShelfHotspots } from "@/components/library/ShelfHotspots";
@@ -35,15 +36,41 @@ import type { NudgeKind } from "@/lib/profile/wellness-store";
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { themeId, theme } = useLibraryTheme();
+  const { themeId, theme, ready: themeReady } = useLibraryTheme();
 
   const slots = useMemo(() => getRoomSlots(themeId), [themeId]);
   const shelves = useMemo(() => getShelves(theme), [theme]);
   const room = ROOM_SLOT_MAPS[themeId];
 
+  /**
+   * How many books one shelf will take. Not a technical ceiling: the whole
+   * library is one document, and a few hundred books of JSON is nothing. It
+   * is a shape limit — past this a wall of spines stops being a room you
+   * recognise and becomes a list, and the collection wants splitting rather
+   * than extending.
+   */
+  const SHELF_CAPACITY = 200;
+
   /** The shelves hold exactly what the reader has added — nothing is seeded. */
   const [books, setBooks] = useState<Book[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  /**
+   * The picker is part of setting an account up, not part of arriving. Anyone
+   * who has chosen a room stays here; anyone who never has is sent to choose
+   * one, which covers a first Google sign-in that came through the sign-in
+   * button rather than sign-up. `replace`, so Back does not bounce them
+   * between the two.
+   */
+  useEffect(() => {
+    let active = true;
+    hasThemePreference().then((chosen) => {
+      if (active && !chosen) router.replace("/onboarding/theme");
+    });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   /**
    * The browser copy paints first so the shelves are never empty while a
@@ -74,14 +101,19 @@ export default function LibraryPage() {
    * room. Rooms have different shelf geometry, so when the mood changes the
    * books are re-seated in `order` sequence onto the new room's slots rather
    * than keeping ids that don't exist there.
+   *
+   * A room has 27 slots and a library can be larger than that. Books past the
+   * last slot keep their place in the collection and simply hold no position
+   * in the scene — the shelf view is the library, the room is scenery. This
+   * used to drop them from state instead, which wrote the loss straight
+   * through to storage and the account.
    */
   useEffect(() => {
     const bookSlots = slots.filter((s) => s.kind === "book");
     setBooks((prev) =>
       [...prev]
         .sort((a, b) => a.order - b.order)
-        .map((book, i) => (bookSlots[i] ? { ...book, slotId: bookSlots[i].id } : book))
-        .filter((book, i) => Boolean(bookSlots[i]))
+        .map((book, i) => ({ ...book, slotId: bookSlots[i]?.id ?? "" }))
     );
   }, [slots]);
 
@@ -196,8 +228,27 @@ export default function LibraryPage() {
     setBooks((prev) => prev.filter((b) => b.owned !== owned));
   }
 
+  /**
+   * Books already on the shelf a new one is headed for. The two shelves in a
+   * room hold separate collections, so they fill up separately.
+   */
+  function countOnShelf(owned: boolean): number {
+    return books.filter((b) => b.owned === owned).length;
+  }
+
+  const addShelf = shelves.find((s) => s.id === addShelfId) ?? shelves[0];
+  const addShelfOwned = addShelf?.ownership === "owned";
+  const addShelfFull =
+    countOnShelf(addShelfOwned) >= SHELF_CAPACITY
+      ? `${addShelf?.label ?? "This shelf"} is full at ${SHELF_CAPACITY} books. Remove one to make room.`
+      : null;
+
   function handleAddBook(draft: BookDraft, coverRect: DOMRect | null) {
-    const occupied = new Set(books.map((b) => b.slotId));
+    // the editor already refuses a full shelf; this is the backstop, so a
+    // stale render can never push a shelf past its limit
+    if (countOnShelf(draft.owned) >= SHELF_CAPACITY) return;
+
+    const occupied = new Set(books.map((b) => b.slotId).filter(Boolean));
     const slot = slots.find((s) => s.kind === "book" && !occupied.has(s.id));
     const book: Book = { ...draft, id: `added-${Date.now()}`, order: books.length, slotId: slot?.id ?? "" };
 
@@ -216,6 +267,13 @@ export default function LibraryPage() {
     }
 
     if (coverRect) setFlight({ book, from: coverRect });
+  }
+
+  // No stored room yet and the account's answer still in flight: a plain
+  // ground for a beat, rather than painting the default room and swapping it
+  // out from under the reader.
+  if (!themeReady) {
+    return <div className="min-h-screen bg-[#0e0d13]" />;
   }
 
   return (
@@ -317,6 +375,7 @@ export default function LibraryPage() {
           owned={(shelves.find((s) => s.id === addShelfId) ?? shelves[0])?.ownership === "owned"}
           destination={{ shelves, value: addShelfId || shelves[0]?.id || "", onChange: setAddShelfId }}
           duplicateShelf={(isbn) => duplicateShelf(isbn)}
+          shelfFull={addShelfFull}
           paper={theme.paper}
           onCancel={() => setOpenPanel(null)}
           onSubmit={handleAddBook}

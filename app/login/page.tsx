@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoginBackdrop } from "@/components/login/LoginBackdrop";
+import { LoginSound } from "@/components/login/LoginSound";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
@@ -84,21 +85,28 @@ function LoginScreen() {
       return;
     }
     // A new account starts with empty shelves; signing in keeps whatever is
-    // already stored for this browser.
-    if (mode === "sign-up") startEmptyLibrary();
-    router.push("/onboarding/theme");
+    // already stored for this browser. A new account also has no room yet, so
+    // it goes to the picker; a returning reader goes straight to their
+    // library, because they answered that question once already.
+    if (mode === "sign-up") {
+      startEmptyLibrary();
+      router.push("/onboarding/theme");
+      return;
+    }
+    router.push("/library");
   }
 
   async function handleGoogle() {
     setErrors({});
     setGoogleLoading(true);
+    const next = mode === "sign-up" ? "/onboarding/theme" : "/library";
     if (mode === "sign-up") startEmptyLibrary();
-    const result = await signInWithGoogle("/onboarding/theme");
+    const result = await signInWithGoogle(next);
     if (!result.ok) {
       setGoogleLoading(false);
       // Demo mode (no Supabase project attached) still walks the flow.
       if (!isSupabaseConfigured) {
-        router.push("/onboarding/theme");
+        router.push(next);
         return;
       }
       setErrors({ form: result.message });
@@ -118,13 +126,20 @@ function LoginScreen() {
           Below `lg` there is no room for a spread, so the pages stack as one
           card and nothing rotates. */}
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl items-center justify-center px-5 py-14">
-        <div className="w-full" style={opened ? undefined : { perspective: "2200px" }}>
+        <div className="w-full">
+          {/* the perspective lives on this wrapper rather than further out, so
+              the sound toggle can sit at the book's own top corner without
+              joining the 3D subtree the book rotates inside */}
           <div
-            className={`mx-auto w-full max-w-[46rem] lg:max-w-[54rem] ${
-              opened ? "" : "animate-book-straighten"
-            }`}
-            style={opened ? undefined : { transformStyle: "preserve-3d" }}
+            className="relative mx-auto w-full max-w-[46rem] lg:max-w-[54rem]"
+            style={opened ? undefined : { perspective: "2200px" }}
           >
+            <LoginSound opened={opened} className="absolute left-6 top-6 z-30" />
+
+            <div
+              className={`w-full ${opened ? "" : "animate-book-straighten"}`}
+              style={opened ? undefined : { transformStyle: "preserve-3d" }}
+            >
             <div
               className={`relative flex flex-col overflow-hidden rounded-token-lg lg:flex-row ${
                 opened
@@ -325,15 +340,16 @@ function LoginScreen() {
                     </button>
                   </p>
 
-                  {/* say who is holding the account, and be honest when nothing
-                      is holding it yet */}
-                  <p className="mt-2 text-center font-body text-[11px] leading-relaxed text-gallery-ink/45">
-                    {isSupabaseConfigured
-                      ? "Accounts are created and secured by Supabase."
-                      : "Supabase isn't connected yet, so accounts run in demo mode."}
-                  </p>
+                  {/* nothing to say once accounts are real; the demo-mode line
+                      stays, because signing up into nothing needs saying */}
+                  {!isSupabaseConfigured && (
+                    <p className="mt-2 text-center font-body text-[11px] leading-relaxed text-gallery-ink/45">
+                      Supabase isn&apos;t connected yet, so accounts run in demo mode.
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { pullLibrary, pushLibrary } from "@/lib/sync/library-sync";
 import {
   loadWellness,
   saveWellness,
+  mergeWellness,
   NUDGES,
   type NudgeKind,
   type WellnessSettings,
@@ -46,18 +47,24 @@ export function RemindersPanel({
     break: "hr",
   });
 
+  function applyWellness(next: WellnessSettings) {
+    setWellness(next);
+    setUnits({
+      water: next.water.hours < 1 ? "min" : "hr",
+      stretch: next.stretch.hours < 1 ? "min" : "hr",
+      break: next.break.hours < 1 ? "min" : "hr",
+    });
+  }
+
   useEffect(() => {
     setReminders(loadReminders());
-    // the account's copy wins once it arrives, same as the shelves
+    applyWellness(loadWellness());
+    // the account's copy wins once it arrives, same as the shelves — the
+    // nudge schedule is a choice about the reader, not the device, so it
+    // follows them the same way
     pullLibrary().then((doc) => {
       if (doc?.reminders) setReminders(doc.reminders);
-    });
-    const loadedWellness = loadWellness();
-    setWellness(loadedWellness);
-    setUnits({
-      water: loadedWellness.water.hours < 1 ? "min" : "hr",
-      stretch: loadedWellness.stretch.hours < 1 ? "min" : "hr",
-      break: loadedWellness.break.hours < 1 ? "min" : "hr",
+      if (doc?.wellness) applyWellness(mergeWellness(doc.wellness));
     });
     setLoaded(true);
   }, []);
@@ -69,7 +76,9 @@ export function RemindersPanel({
   }, [reminders, loaded]);
 
   useEffect(() => {
-    if (loaded && wellness) saveWellness(wellness);
+    if (!loaded || !wellness) return;
+    saveWellness(wellness);
+    pushLibrary({ wellness });
   }, [wellness, loaded]);
 
   const done = reminders.filter((r) => r.done).length;

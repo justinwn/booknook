@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLibraryTheme } from "@/lib/theme/theme-context";
 import { ROOM_SLOT_MAPS, getRoomSlots } from "@/lib/library/slot-maps";
-import { loadBooks, saveBooks } from "@/lib/profile/library-store";
+import { loadBooks, saveBooks, startEmptyLibrary } from "@/lib/profile/library-store";
 import { pullLibrary, pushLibrary } from "@/lib/sync/library-sync";
 import { hasThemePreference } from "@/lib/profile/theme-preference";
 import type { Book } from "@/lib/types";
@@ -32,7 +32,7 @@ import { ShelfDetail } from "@/components/library/ShelfDetail";
 import { deweyClassFor } from "@/lib/library/dewey";
 import { getShelves } from "@/lib/library/shelves";
 import { MadeBy } from "@/components/brand/MadeBy";
-import type { NudgeKind } from "@/lib/profile/wellness-store";
+import { saveWellness, mergeWellness, type NudgeKind } from "@/lib/profile/wellness-store";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -58,14 +58,21 @@ export default function LibraryPage() {
   /**
    * The picker is part of setting an account up, not part of arriving. Anyone
    * who has chosen a room stays here; anyone who never has is sent to choose
-   * one, which covers a first Google sign-in that came through the sign-in
-   * button rather than sign-up. `replace`, so Back does not bounce them
-   * between the two.
+   * one. This is the one place that decides — Google is a single button for
+   * both creating and returning to an account, and Supabase only reveals
+   * which one it was after the redirect lands back here, so the login page
+   * can't reliably tell from which tab was open. `replace`, so Back does not
+   * bounce them between the two.
    */
   useEffect(() => {
     let active = true;
     hasThemePreference().then((chosen) => {
-      if (active && !chosen) router.replace("/onboarding/theme");
+      if (!active || chosen) return;
+      // confirmed new by the same check, not guessed from which button was
+      // clicked — so a previous person's leftover books on this browser
+      // aren't inherited by a fresh account signing up here
+      startEmptyLibrary();
+      router.replace("/onboarding/theme");
     });
     return () => {
       active = false;
@@ -83,7 +90,14 @@ export default function LibraryPage() {
     setLoaded(true);
     let active = true;
     pullLibrary().then((doc) => {
-      if (active && doc?.books) setBooks(doc.books);
+      if (!active) return;
+      if (doc?.books) setBooks(doc.books);
+      // WellnessSprite reads its schedule straight off localStorage on every
+      // tick rather than through this page's state, so the account's copy
+      // has to land there directly — otherwise a nudge changed on another
+      // device wouldn't take effect here until the Reminders panel was
+      // opened once to pull it down itself.
+      if (doc?.wellness) saveWellness(mergeWellness(doc.wellness));
     });
     return () => {
       active = false;
@@ -311,7 +325,7 @@ export default function LibraryPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/45 to-transparent" />
 
       {/* bottom-left: the clock, with the companion walking along the top of it */}
-      <div className="pointer-events-none fixed bottom-8 left-1/2 z-20 -translate-x-1/2 text-center sm:left-10 sm:translate-x-0 sm:text-left lg:bottom-14 lg:left-14">
+      <div className="pointer-events-none fixed bottom-[4.5rem] left-1/2 z-20 -translate-x-1/2 text-center sm:left-10 sm:translate-x-0 sm:text-left lg:bottom-14 lg:left-14">
         <WellnessSprite
           themeId={themeId}
           paper={theme.paper}

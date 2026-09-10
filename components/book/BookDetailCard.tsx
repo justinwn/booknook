@@ -13,7 +13,8 @@ type Mode = "note" | "share";
 interface BookDetailCardProps {
   book: Book;
   paper?: PaperTreatment;
-  onEdit: () => void;
+  /** absent on a read-only view (the public share page) — Edit doesn't show */
+  onEdit?: () => void;
   onClose: () => void;
 }
 
@@ -54,13 +55,15 @@ export function BookDetailCard({ book, paper, onEdit, onClose }: BookDetailCardP
               {formatCallNumber(book.dewey)}
             </span>
             <span className="flex gap-2">
-              <button
-                type="button"
-                onClick={onEdit}
-                className="rounded-token-lg border border-border px-3.5 py-1.5 font-body text-xs text-ink transition-colors hover:bg-surface-raised"
-              >
-                Edit
-              </button>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="rounded-token-lg border border-border px-3.5 py-1.5 font-body text-xs text-ink transition-colors hover:bg-surface-raised"
+                >
+                  Edit
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setMode("share")}

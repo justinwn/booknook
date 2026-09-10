@@ -44,6 +44,12 @@ interface BookEditorScreenProps {
    * collection, so it owns the answer; the editor only reports it.
    */
   duplicateShelf?: (isbn: string) => string | null;
+  /**
+   * Set when the destination shelf has no room left, with the sentence to
+   * show. The library counts its own shelves; the editor only reports it and
+   * refuses to submit.
+   */
+  shelfFull?: string | null;
   /** which room this is being filled in, so the card can wear its materials */
   themeId: ThemeId;
   paper?: PaperTreatment;
@@ -77,6 +83,7 @@ export function BookEditorScreen({
   owned,
   destination,
   duplicateShelf,
+  shelfFull,
   themeId,
   paper,
   onCancel,
@@ -123,7 +130,7 @@ export function BookEditorScreen({
     ? `You already have this book added in ${duplicateIn}.`
     : error;
 
-  const canSubmit = title.trim().length > 0 && !duplicateIn;
+  const canSubmit = title.trim().length > 0 && !duplicateIn && !shelfFull;
   /**
    * Reading progress belongs to books you have. A title on the wishlist has
    * no status and no reading dates to record, so the whole group is absent
@@ -355,6 +362,12 @@ export function BookEditorScreen({
                 ))}
               </div>
             </div>
+          )}
+
+          {shelfFull && (
+            <p role="alert" className="mt-4 font-body text-xs text-[#e9a49d]">
+              {shelfFull}
+            </p>
           )}
 
           <div className="mt-6 flex flex-col gap-2">

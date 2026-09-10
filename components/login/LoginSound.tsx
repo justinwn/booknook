@@ -26,11 +26,10 @@ function loadPreference(): boolean {
  *
  * Browsers refuse audio that no one asked for, so nothing here assumes it can
  * play. The first attempt is made anyway — a reader who has been here before
- * has usually earned the permission — and if it is refused, the toggle shows
- * itself as off and the next click or keypress anywhere on the page starts the
- * music. The sound effect is not replayed in that case: the moment it belonged
- * to has passed, and a book opening after the book has opened is worse than
- * silence.
+ * has usually earned the permission — and if it is refused, the open sound is
+ * held over: the next click or keypress anywhere on the page pays it and
+ * brings the music up behind it. Slightly late is better than never heard,
+ * and on a cold first visit "never heard" is what the policy guarantees.
  */
 export function LoginSound({ opened, className }: { opened: boolean; className?: string }) {
   const [on, setOn] = useState(true);
@@ -39,6 +38,8 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
 
   const themeRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** the open sound the browser would not let us play yet */
+  const owedSfxRef = useRef(false);
 
   const stopFade = () => {
     if (fadeRef.current) {
@@ -62,6 +63,15 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
       stopFade();
       if (target === 0) el.pause();
     }, step);
+  }, []);
+
+  /** plays the open sound if the browser refused it the first time */
+  const payOwedSfx = useCallback(() => {
+    if (!owedSfxRef.current) return;
+    owedSfxRef.current = false;
+    const sfx = new Audio(OPEN_SFX);
+    sfx.volume = SFX_VOLUME;
+    void sfx.play().catch(() => undefined);
   }, []);
 
   const startTheme = useCallback(() => {
@@ -94,7 +104,10 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
     if (wanted) {
       const sfx = new Audio(OPEN_SFX);
       sfx.volume = SFX_VOLUME;
-      sfx.play().catch(() => setBlocked(true));
+      sfx.play().catch(() => {
+        owedSfxRef.current = true;
+        setBlocked(true);
+      });
     }
 
     return () => {
@@ -108,13 +121,14 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
   useEffect(() => {
     if (!ready || !opened || !on || blocked) return;
     let cancelled = false;
+    payOwedSfx();
     startTheme().then((played) => {
       if (!played && !cancelled) setBlocked(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [ready, opened, on, blocked, startTheme]);
+  }, [ready, opened, on, blocked, startTheme, payOwedSfx]);
 
   // refused once: the next thing the reader does anywhere is permission enough
   useEffect(() => {
@@ -143,8 +157,15 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
     }
     // a click is a gesture, so this attempt is never refused
     setBlocked(false);
+    payOwedSfx();
     if (opened) void startTheme();
   }
+
+  // the control belongs to the open book: there is nothing to turn off while
+  // the cover is still shut, and it would sit on the leather looking like a
+  // sticker. The component stays mounted throughout, so the open sound still
+  // fires at the moment the page arrives.
+  if (!opened) return null;
 
   const label = on ? "Turn sound off" : "Turn sound on";
 

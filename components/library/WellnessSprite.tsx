@@ -5,10 +5,13 @@ import type { ThemeId } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import {
   dueNudge,
+  formatCountdown,
   loadFired,
+  loadSince,
   loadSnoozed,
   loadWellness,
   markFired,
+  msUntilNextNudge,
   NUDGES,
   snoozeNudge,
   type NudgeKind,
@@ -184,7 +187,10 @@ export function WellnessSprite({
   /** true while the bubble plays its exit; the nudge clears when it finishes */
   const [exiting, setExiting] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const openedAt = useRef(Date.now());
+  /** persisted, so a reload doesn't quietly restart the wait — see loadSince */
+  const since = useRef<number | null>(null);
+  if (since.current === null) since.current = loadSince();
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   /**
    * The stroll spans the whole clock below rather than a fixed distance, so
@@ -201,38 +207,69 @@ export function WellnessSprite({
   }, [sprite.width]);
 
   useEffect(() => {
-    const check = () =>
-      setNudge((current) =>
-        current ??
-          dueNudge(
-            loadWellness(),
-            loadFired(),
-            openedAt.current,
-            Date.now(),
-            loadSnoozed()
-          )
-      );
-    check();
-    // 30s so a snooze comes back close to its five minutes, not a minute late
-    const id = window.setInterval(check, 30_000);
+    const tick = () => {
+      const settings = loadWellness();
+      const fired = loadFired();
+      const snoozed = loadSnoozed();
+      const now = Date.now();
+      setNudge((current) => current ?? dueNudge(settings, fired, since.current!, now, snoozed));
+      setRemainingMs(msUntilNextNudge(settings, fired, since.current!, now, snoozed));
+    };
+    tick();
+    // once a second, so the countdown reads as one and a snooze comes back
+    // exactly on time rather than up to a minute late
+    const id = window.setInterval(tick, 1_000);
     return () => window.clearInterval(id);
   }, []);
 
   /**
    * The nudge announces itself. One element, reused, so a nudge arriving
    * while the last chime is still ringing restarts it rather than stacking.
-   * A browser that has had no interaction on this page yet will refuse to
-   * play at all; the bubble still appears, so the reminder isn't lost.
    */
   const chime = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    if (!active) return;
+  function ensureChime(): HTMLAudioElement {
     if (!chime.current) {
       chime.current = new Audio(REMINDER_SRC);
       chime.current.volume = REMINDER_VOLUME;
     }
-    chime.current.currentTime = 0;
-    void chime.current.play().catch(() => {});
+    return chime.current;
+  }
+
+  /**
+   * A nudge fired purely by the countdown — no click involved — can be this
+   * page's very first attempt to play audio, and a browser that has had no
+   * interaction yet refuses that outright. Priming the same element on the
+   * page's first real gesture (muted, played, immediately paused) settles
+   * that with the browser well before the countdown ever reaches zero, so
+   * the later, un-gestured play() is trusted instead of silently dropped.
+   */
+  useEffect(() => {
+    function unlock() {
+      const el = ensureChime();
+      el.muted = true;
+      el.play()
+        .then(() => {
+          el.pause();
+          el.currentTime = 0;
+          el.muted = false;
+        })
+        .catch(() => {
+          el.muted = false;
+        });
+    }
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    const el = ensureChime();
+    el.currentTime = 0;
+    void el.play().catch(() => {});
   }, [active]);
 
   // a new nudge always starts from a clean state, never mid-exit
@@ -296,6 +333,15 @@ export function WellnessSprite({
       className="pointer-events-none relative w-full select-none"
       style={{ height: sprite.height, ["--stroll-x" as string]: `${travel}px` }}
     >
+      {!active && remainingMs !== null && (
+        <p
+          className="pointer-events-none absolute left-0 select-none whitespace-nowrap text-[11px] uppercase tracking-[0.14em] text-white/60"
+          style={{ bottom: sprite.height + 6, fontFamily: paper.fontBody }}
+        >
+          Next nudge · {formatCountdown(remainingMs)}
+        </p>
+      )}
+
       {active && (
         <div
           role="status"

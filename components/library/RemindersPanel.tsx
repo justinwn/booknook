@@ -13,6 +13,10 @@ import {
   type WellnessSettings,
 } from "@/lib/profile/wellness-store";
 
+/** a corner-of-the-room list, not a task manager — long enough for what's
+ * actually on your mind, short enough to stay scannable at a glance */
+const MAX_REMINDERS = 15;
+
 /**
  * A short list of things to come back to — finish a chapter, return a
  * borrowed book. Deliberately plain: it lives in the corner of a room, so it
@@ -31,6 +35,16 @@ export function RemindersPanel({
   const [dragId, setDragId] = useState<string | null>(null);
   const [wellness, setWellness] = useState<WellnessSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /**
+   * Hours is still what's stored (fractions and all — 30 minutes is just
+   * 0.5), so the unit is purely a display choice per row: whichever one the
+   * saved value reads more naturally in, until the reader picks otherwise.
+   */
+  const [units, setUnits] = useState<Record<NudgeKind, "min" | "hr">>({
+    water: "hr",
+    stretch: "hr",
+    break: "hr",
+  });
 
   useEffect(() => {
     setReminders(loadReminders());
@@ -38,7 +52,13 @@ export function RemindersPanel({
     pullLibrary().then((doc) => {
       if (doc?.reminders) setReminders(doc.reminders);
     });
-    setWellness(loadWellness());
+    const loadedWellness = loadWellness();
+    setWellness(loadedWellness);
+    setUnits({
+      water: loadedWellness.water.hours < 1 ? "min" : "hr",
+      stretch: loadedWellness.stretch.hours < 1 ? "min" : "hr",
+      break: loadedWellness.break.hours < 1 ? "min" : "hr",
+    });
     setLoaded(true);
   }, []);
 
@@ -53,12 +73,17 @@ export function RemindersPanel({
   }, [wellness, loaded]);
 
   const done = reminders.filter((r) => r.done).length;
+  const atCapacity = reminders.length >= MAX_REMINDERS;
 
   function add() {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || atCapacity) return;
     setReminders((prev) => [...prev, { id: `r-${Date.now()}`, text, done: false }]);
     setDraft("");
+  }
+
+  function clearCompleted() {
+    setReminders((prev) => prev.filter((r) => !r.done));
   }
 
   /** Moves one reminder to another's position, keeping the rest in order. */
@@ -88,14 +113,29 @@ export function RemindersPanel({
   }
 
   return (
-    <ScenePanel title="Reminders" onClose={onClose}>
-      <p className="font-body text-xs text-ink-muted">
-        {reminders.length === 0
-          ? "Nothing to remember yet."
-          : `${done} of ${reminders.length} done`}
-      </p>
+    <ScenePanel
+      title="Reminders"
+      onClose={onClose}
+      widthClassName="w-[min(21rem,calc(100vw-2rem))] lg:w-[min(28rem,calc(100vw-2rem))]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-body text-xs text-ink-muted">
+          {reminders.length === 0
+            ? "Nothing to remember yet."
+            : `${done} of ${reminders.length} done`}
+        </p>
+        {done > 0 && (
+          <button
+            type="button"
+            onClick={clearCompleted}
+            className="shrink-0 font-body text-[11px] text-ink-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
+          >
+            Clear completed tasks
+          </button>
+        )}
+      </div>
 
-      <ul className="mt-3 flex flex-col divide-y divide-border/60">
+      <ul className="mt-3 flex max-h-72 flex-col divide-y divide-border/60 overflow-y-auto pr-1">
         {reminders.map((reminder, index) => (
           <li
             key={reminder.id}
@@ -164,14 +204,15 @@ export function RemindersPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="What needs doing?"
+          placeholder={atCapacity ? `Up to ${MAX_REMINDERS} at a time` : "What needs doing?"}
+          disabled={atCapacity}
           aria-label="New reminder"
-          className="min-w-0 flex-1 rounded-token-lg border border-border bg-surface-raised/70 px-3.5 py-2 font-body text-sm text-ink placeholder:text-ink-soft focus:border-accent focus:outline-none"
+          className="min-w-0 flex-1 rounded-token-lg border border-border bg-surface-raised/70 px-3.5 py-2 font-body text-sm text-ink placeholder:text-ink-soft focus:border-accent focus:outline-none disabled:opacity-40"
         />
         <button
           type="button"
           onClick={add}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || atCapacity}
           className="shrink-0 rounded-token-lg bg-accent px-3.5 py-2 font-body text-xs font-medium text-bg disabled:opacity-40"
         >
           Add
@@ -189,55 +230,72 @@ export function RemindersPanel({
           </p>
 
           <ul className="mt-3 flex flex-col gap-2.5">
-            {NUDGES.map(({ kind, label }) => (
-              <li key={kind} className="flex items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={wellness[kind].enabled}
-                  onChange={() =>
-                    setWellness((prev) =>
-                      prev
-                        ? { ...prev, [kind]: { ...prev[kind], enabled: !prev[kind].enabled } }
-                        : prev
-                    )
-                  }
-                  aria-label={`Nudge me to ${label.toLowerCase()}`}
-                  className="h-4 w-4 shrink-0 accent-[var(--color-accent)]"
-                />
-                <span
-                  className={`min-w-0 flex-1 font-body text-sm ${
-                    wellness[kind].enabled ? "text-ink" : "text-ink-soft"
-                  }`}
-                >
-                  {label}
+            {NUDGES.map(({ kind, label }) => {
+              const unit = units[kind];
+              const bounds = unit === "min" ? { min: 1, max: 59 } : { min: 1, max: 12 };
+              const displayValue =
+                unit === "min" ? Math.round(wellness[kind].hours * 60) : wellness[kind].hours;
+
+              return (
+              <li key={kind} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
+                <span className="flex min-w-0 items-center gap-2.5 sm:flex-1">
+                  <input
+                    type="checkbox"
+                    checked={wellness[kind].enabled}
+                    onChange={() =>
+                      setWellness((prev) =>
+                        prev
+                          ? { ...prev, [kind]: { ...prev[kind], enabled: !prev[kind].enabled } }
+                          : prev
+                      )
+                    }
+                    aria-label={`Nudge me to ${label.toLowerCase()}`}
+                    className="h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span
+                    className={`min-w-0 flex-1 font-body text-sm ${
+                      wellness[kind].enabled ? "text-ink" : "text-ink-soft"
+                    }`}
+                  >
+                    {label}
+                  </span>
                 </span>
-                <span className="flex shrink-0 items-center gap-1.5">
+                <span className="ml-[1.625rem] flex shrink-0 items-center gap-1.5 sm:ml-0">
                   <label className="sr-only" htmlFor={`nudge-${kind}`}>
-                    Hours between {label.toLowerCase()} nudges
+                    {unit === "min" ? "Minutes" : "Hours"} between {label.toLowerCase()} nudges
                   </label>
                   <input
                     id={`nudge-${kind}`}
                     type="number"
-                    min={1}
-                    max={12}
-                    value={wellness[kind].hours}
+                    min={bounds.min}
+                    max={bounds.max}
+                    value={displayValue}
                     disabled={!wellness[kind].enabled}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const raw = Number(e.target.value) || bounds.min;
+                      const clamped = Math.min(bounds.max, Math.max(bounds.min, raw));
+                      const hours = unit === "min" ? clamped / 60 : clamped;
                       setWellness((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              [kind]: {
-                                ...prev[kind],
-                                hours: Math.min(12, Math.max(1, Number(e.target.value) || 1)),
-                              },
-                            }
-                          : prev
-                      )
-                    }
+                        prev ? { ...prev, [kind]: { ...prev[kind], hours } } : prev
+                      );
+                    }}
                     className="w-14 rounded-token border border-border bg-surface-raised/70 px-2 py-1 text-center font-body text-xs tabular-nums text-ink focus:border-accent focus:outline-none disabled:opacity-40"
                   />
-                  <span className="font-body text-[11px] text-ink-soft">hr</span>
+                  <label className="sr-only" htmlFor={`nudge-${kind}-unit`}>
+                    Unit for {label.toLowerCase()} nudges
+                  </label>
+                  <select
+                    id={`nudge-${kind}-unit`}
+                    value={unit}
+                    disabled={!wellness[kind].enabled}
+                    onChange={(e) =>
+                      setUnits((prev) => ({ ...prev, [kind]: e.target.value as "min" | "hr" }))
+                    }
+                    className="rounded-token border border-border bg-surface-raised/70 px-1.5 py-1 font-body text-[11px] text-ink-soft focus:border-accent focus:outline-none disabled:opacity-40"
+                  >
+                    <option value="min">min</option>
+                    <option value="hr">hr</option>
+                  </select>
                   {/* fires this nudge now: the sprite acts it out and the chime
                       plays, but the real timer is left where it was */}
                   <button
@@ -251,7 +309,8 @@ export function RemindersPanel({
                   </button>
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       )}

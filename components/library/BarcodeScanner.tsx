@@ -36,6 +36,16 @@ export function BarcodeScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // the editor behind the scanner should not scroll away under it, whether
+  // the camera is live or the error state is showing
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   useEffect(() => {
     const Detector = getDetector();
     if (!Detector) {
@@ -84,8 +94,22 @@ export function BarcodeScanner({
           frame = requestAnimationFrame(read);
         };
         frame = requestAnimationFrame(read);
-      } catch {
-        setError("Couldn't open the camera. Check the site's camera permission.");
+      } catch (err) {
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          setError("Camera needs a secure connection (https). It won't work over a plain http address.");
+        } else if (err instanceof DOMException && err.name === "NotAllowedError") {
+          // once denied, the browser won't ask again — no dialog will
+          // reappear until the reader clears it themselves
+          setError(
+            "Camera access is blocked for this site. Tap the icon next to the address bar, open Permissions, allow Camera, then reload the page."
+          );
+        } else if (err instanceof DOMException && err.name === "NotFoundError") {
+          setError("No camera found on this device.");
+        } else if (err instanceof DOMException && err.name === "NotReadableError") {
+          setError("The camera is already in use by another app.");
+        } else {
+          setError("Couldn't open the camera. Check the site's camera permission.");
+        }
       }
     })();
 

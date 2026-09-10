@@ -7,6 +7,8 @@ interface ScenePanelProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** override the default width — for a panel that needs more room, like Reminders on large screens */
+  widthClassName?: string;
 }
 
 /**
@@ -14,7 +16,7 @@ interface ScenePanelProps {
  * slides in beside the controls rather than a modal that blanks the library —
  * the room should stay visible behind whatever you're doing in it.
  */
-export function ScenePanel({ title, onClose, children }: ScenePanelProps) {
+export function ScenePanel({ title, onClose, children, widthClassName }: ScenePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +35,9 @@ export function ScenePanel({ title, onClose, children }: ScenePanelProps) {
       aria-label={title}
       aria-modal="false"
       tabIndex={-1}
-      className="grain-overlay glass-strong w-[min(21rem,calc(100vw-2rem))] rounded-token-lg p-5 outline-none"
+      className={`grain-overlay glass-strong rounded-token-lg p-5 outline-none ${
+        widthClassName ?? "w-[min(21rem,calc(100vw-2rem))]"
+      }`}
     >
       <div className="relative z-10 flex items-start justify-between gap-4">
         <h2 className="font-display text-lg leading-tight text-ink">{title}</h2>

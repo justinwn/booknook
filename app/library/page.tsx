@@ -36,7 +36,7 @@ import type { NudgeKind } from "@/lib/profile/wellness-store";
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { themeId, theme } = useLibraryTheme();
+  const { themeId, theme, ready: themeReady } = useLibraryTheme();
 
   const slots = useMemo(() => getRoomSlots(themeId), [themeId]);
   const shelves = useMemo(() => getShelves(theme), [theme]);
@@ -234,6 +234,13 @@ export default function LibraryPage() {
     }
 
     if (coverRect) setFlight({ book, from: coverRect });
+  }
+
+  // No stored room yet and the account's answer still in flight: a plain
+  // ground for a beat, rather than painting the default room and swapping it
+  // out from under the reader.
+  if (!themeReady) {
+    return <div className="min-h-screen bg-[#0e0d13]" />;
   }
 
   return (

@@ -134,7 +134,7 @@ function LoginScreen() {
             className="relative mx-auto w-full max-w-[46rem] lg:max-w-[54rem]"
             style={opened ? undefined : { perspective: "2200px" }}
           >
-            <LoginSound opened={opened} className="absolute left-3 top-3 z-30 shadow-sm" />
+            <LoginSound opened={opened} className="absolute left-6 top-6 z-30" />
 
             <div
               className={`w-full ${opened ? "" : "animate-book-straighten"}`}

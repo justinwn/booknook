@@ -32,6 +32,21 @@ export async function loadThemePreference(): Promise<ThemeId> {
 }
 
 /**
+ * The browser's own copy, read synchronously. The remote answer needs a round
+ * trip, and a room that paints as the default and then swaps is worse than a
+ * beat of nothing — so this is what the first paint uses when it exists.
+ */
+export function readLocalThemePreference(): ThemeId | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const local = window.localStorage.getItem(STORAGE_KEY);
+    return isThemeId(local) ? local : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether this reader has ever chosen a mood. The difference matters at the
  * door: someone signing back in should land in their library, and only an
  * account that has never picked a room should be sent to the picker. An

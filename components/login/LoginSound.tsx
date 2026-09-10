@@ -7,8 +7,14 @@ import { Volume2, VolumeX } from "lucide-react";
 const OPEN_SFX = "/assets/audio/book-open.mp3";
 const THEME = "/assets/audio/login-theme.mp3";
 const SFX_VOLUME = 0.55;
-const THEME_VOLUME = 0.32;
+const THEME_VOLUME = 0.2;
 const FADE_MS = 1400;
+/**
+ * The cover holds still for the first 18% of `book-leaf-open` (1500ms) before
+ * it starts to swing, so the sound waits the same 270ms. Both are started by
+ * the same mount, so the two stay in step without measuring anything.
+ */
+const LEAF_HOLD_MS = 270;
 const KEY = "librari:login-sound";
 
 function loadPreference(): boolean {
@@ -25,21 +31,22 @@ function loadPreference(): boolean {
  * up under it once it has.
  *
  * Browsers refuse audio that no one asked for, so nothing here assumes it can
- * play. The first attempt is made anyway — a reader who has been here before
- * has usually earned the permission — and if it is refused, the open sound is
- * held over: the next click or keypress anywhere on the page pays it and
- * brings the music up behind it. Slightly late is better than never heard,
- * and on a cold first visit "never heard" is what the policy guarantees.
+ * play. Both attempts are made anyway — a reader who has been here before has
+ * usually earned the permission. The open sound gets one shot, on the beat
+ * the cover starts to swing, and a refusal ends it: replaying it later would
+ * be a book opening after the book has opened. The music has no such moment,
+ * so if it is refused the next click or keypress anywhere brings it up.
  */
 export function LoginSound({ opened, className }: { opened: boolean; className?: string }) {
+  /** true when the page skipped the animation (reduced motion) */
+  const [openedAtMount] = useState(opened);
   const [on, setOn] = useState(true);
   const [blocked, setBlocked] = useState(false);
   const [ready, setReady] = useState(false);
 
   const themeRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** the open sound the browser would not let us play yet */
-  const owedSfxRef = useRef(false);
+  const sfxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopFade = () => {
     if (fadeRef.current) {
@@ -65,13 +72,13 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
     }, step);
   }, []);
 
-  /** plays the open sound if the browser refused it the first time */
-  const payOwedSfx = useCallback(() => {
-    if (!owedSfxRef.current) return;
-    owedSfxRef.current = false;
+  const playSfx = useCallback(() => {
     const sfx = new Audio(OPEN_SFX);
     sfx.volume = SFX_VOLUME;
-    void sfx.play().catch(() => undefined);
+    // refused by the autoplay policy on a cold visit: the swing is the only
+    // moment this sound belongs to, so a refusal is the end of it rather than
+    // something to replay later out of context
+    sfx.play().catch(() => undefined);
   }, []);
 
   const startTheme = useCallback(() => {
@@ -100,35 +107,39 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
     theme.volume = 0;
     themeRef.current = theme;
 
-    // the book's own sound, at the moment the page arrives
+    // The cover swings on mount, so the sound is scheduled from the same
+    // moment: on the beat the leaf starts moving, and on every refresh,
+    // because this effect runs once per mount. A reduced-motion visit has no
+    // swing to wait for, so it plays at once.
     if (wanted) {
-      const sfx = new Audio(OPEN_SFX);
-      sfx.volume = SFX_VOLUME;
-      sfx.play().catch(() => {
-        owedSfxRef.current = true;
-        setBlocked(true);
-      });
+      const delay = openedAtMount ? 0 : LEAF_HOLD_MS;
+      sfxTimerRef.current = setTimeout(() => {
+        sfxTimerRef.current = null;
+        playSfx();
+      }, delay);
     }
 
     return () => {
       stopFade();
+      if (sfxTimerRef.current) clearTimeout(sfxTimerRef.current);
       theme.pause();
       themeRef.current = null;
     };
+    // openedAtMount and playSfx are stable for the life of the component
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // the theme belongs to the open book, not to the closed one
   useEffect(() => {
     if (!ready || !opened || !on || blocked) return;
     let cancelled = false;
-    payOwedSfx();
     startTheme().then((played) => {
       if (!played && !cancelled) setBlocked(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [ready, opened, on, blocked, startTheme, payOwedSfx]);
+  }, [ready, opened, on, blocked, startTheme]);
 
   // refused once: the next thing the reader does anywhere is permission enough
   useEffect(() => {
@@ -157,7 +168,6 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
     }
     // a click is a gesture, so this attempt is never refused
     setBlocked(false);
-    payOwedSfx();
     if (opened) void startTheme();
   }
 
@@ -177,11 +187,10 @@ export function LoginSound({ opened, className }: { opened: boolean; className?:
       aria-label={label}
       title={label}
       className={clsx(
-        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 font-body text-[13px] transition-colors",
-        "backdrop-blur-sm",
-        on
-          ? "border-gallery-ink/10 bg-white/75 text-gallery-ink hover:bg-white"
-          : "border-gallery-ink/10 bg-white/45 text-gallery-ink/45 hover:bg-white/70",
+        // plain: it sits on the page it belongs to, so a plate around it would
+        // read as a control bolted onto the book rather than printed on it
+        "inline-flex items-center gap-2 bg-transparent font-body text-[13px] transition-opacity",
+        on ? "text-gallery-ink/70 hover:text-gallery-ink" : "text-gallery-ink/35 hover:text-gallery-ink/60",
         className
       )}
     >

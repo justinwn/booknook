@@ -120,6 +120,17 @@ export function BookEditorScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
+  // Book3D takes a height in px rather than a CSS size, so shrinking it for
+  // small screens needs a breakpoint check rather than a Tailwind class
+  const [compactPreview, setCompactPreview] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    setCompactPreview(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setCompactPreview(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   /**
    * The same book twice is almost always a mis-scan rather than an intent, so
    * a matching ISBN blocks both the lookup and the save, and says where the
@@ -255,10 +266,12 @@ export function BookEditorScreen({
     }`;
 
   return (
-    <div className="animate-shelf-in absolute inset-0 z-[60] overflow-y-auto bg-bg/70 backdrop-blur-xl">
+    <div className="animate-shelf-in absolute inset-0 z-[60] overflow-y-auto overflow-x-hidden bg-bg/70 backdrop-blur-xl">
       <div className="mx-auto grid min-h-full w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-10 pt-12 lg:grid-cols-[0.9fr_1fr] lg:gap-16 lg:px-10">
-        {/* LEFT — the book as it will look on the shelf, filling in as you go */}
-        <div className="relative mx-auto w-full max-w-sm lg:mx-0">
+        {/* LEFT — the book as it will look on the shelf, filling in as you go.
+            Comes second on small screens: the form is what you're here to
+            fill in, the preview is a payoff you scroll to. */}
+        <div className="relative order-2 mx-auto w-full max-w-[260px] sm:max-w-sm lg:order-1 lg:mx-0">
           <div
             className="pointer-events-none absolute -inset-16 -z-10"
             style={{
@@ -292,7 +305,7 @@ export function BookEditorScreen({
                     },
                   } as Book
                 }
-                height={330}
+                height={compactPreview ? 264 : 330}
                 className="animate-book-settle"
               />
             ) : (
@@ -306,7 +319,10 @@ export function BookEditorScreen({
             </div>
           </div>
 
-          <div className="absolute -bottom-10 -right-2 w-[56%] min-w-[13rem]" style={{ transform: "rotate(2deg)" }}>
+          {/* below the book in normal flow on small screens — no overlap, no
+              hidden height to account for. From sm up it overlaps the book's
+              corner at an angle, the original card-on-a-shelf look. */}
+          <div className="relative mt-5 w-full rotate-0 sm:absolute sm:-bottom-10 sm:-right-2 sm:mt-0 sm:w-[56%] sm:min-w-[13rem] sm:max-w-[calc(100%-1rem)] sm:rotate-[2deg]">
             {title || rating || note ? (
               <BookNote
                 title={title || "Untitled"}
@@ -333,8 +349,9 @@ export function BookEditorScreen({
           </div>
         </div>
 
-        {/* RIGHT — the form. Identical field set in both modes. */}
-        <ThemedFrame themeId={themeId} className="w-full shadow-token-lg">
+        {/* RIGHT — the form. Identical field set in both modes. First on
+            small screens; sits to the right of the preview from lg up. */}
+        <ThemedFrame themeId={themeId} className="order-1 w-full shadow-token-lg lg:order-2">
         <div className="w-full rounded-token-lg px-6 pb-5 pt-5 sm:px-7 sm:pb-5 sm:pt-6" style={themeType}>
           <h2
             className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink"
@@ -372,8 +389,8 @@ export function BookEditorScreen({
 
           <div className="mt-6 flex flex-col gap-2">
             <label className={label} htmlFor="book-isbn">ISBN</label>
-            <div className="flex items-center gap-2.5">
-              <div className="relative flex-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative min-w-[8rem] flex-1">
                 <input
                   id="book-isbn"
                   value={isbn}
@@ -386,16 +403,17 @@ export function BookEditorScreen({
                   placeholder="978…"
                   aria-invalid={isbnError ? true : undefined}
                   aria-describedby={isbnError ? "book-isbn-error" : undefined}
-                  className={`${textField} pr-11`}
+                  className={`${textField} pr-4 sm:pr-11`}
                 />
                 {/* the barcode on the back of the book, read by the camera
-                    rather than typed off it */}
+                    rather than typed off it. Hidden on small screens for now —
+                    camera-permission handling there still needs work. */}
                 <button
                   type="button"
                   onClick={() => setScanning(true)}
                   aria-label="Scan the barcode with your camera"
                   title="Scan the barcode"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-token p-1.5 text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+                  className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-token p-1.5 text-ink-soft transition-colors hover:bg-surface hover:text-ink sm:block"
                 >
                   <QrCode className="h-4 w-4" strokeWidth={1.5} />
                 </button>

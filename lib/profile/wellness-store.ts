@@ -23,6 +23,7 @@ export const DEFAULT_WELLNESS: WellnessSettings = {
 const SETTINGS_KEY = "librari:wellness";
 const FIRED_KEY = "librari:wellness-fired";
 const SNOOZE_KEY = "librari:wellness-snoozed";
+const SINCE_KEY = "librari:wellness-since";
 
 /** how long "Snooze" holds a nudge back before it asks again */
 export const SNOOZE_MS = 5 * 60_000;
@@ -49,6 +50,24 @@ export function saveWellness(settings: WellnessSettings): void {
     window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch {
     // storage blocked — settings apply for this session only
+  }
+}
+
+/**
+ * When the countdown's very first interval began — written once, the first
+ * time this reader ever opens the room, and reused from then on. Anchoring
+ * it to localStorage rather than to the moment this component happens to
+ * mount means a page reload doesn't silently restart the wait.
+ */
+export function loadSince(now = Date.now()): number {
+  if (typeof window === "undefined") return now;
+  try {
+    const raw = window.localStorage.getItem(SINCE_KEY);
+    if (raw) return Number(raw);
+    window.localStorage.setItem(SINCE_KEY, String(now));
+    return now;
+  } catch {
+    return now;
   }
 }
 
@@ -119,4 +138,42 @@ export function dueNudge(
     if (overdueBy >= 0 && (!best || overdueBy > best.overdueBy)) best = { kind, overdueBy };
   }
   return best?.kind ?? null;
+}
+
+/**
+ * Milliseconds until the soonest enabled nudge is due — what a countdown
+ * reads off. Null when nothing is enabled, so there is nothing to count down
+ * to. A snooze pushes its own nudge's countdown out to the snooze time
+ * without touching how the interval itself is measured.
+ */
+export function msUntilNextNudge(
+  settings: WellnessSettings,
+  fired: Partial<Record<NudgeKind, number>>,
+  since: number,
+  now: number,
+  snoozed: Partial<Record<NudgeKind, number>> = {}
+): number | null {
+  let soonest: number | null = null;
+  for (const { kind } of NUDGES) {
+    const setting = settings[kind];
+    if (!setting.enabled || setting.hours <= 0) continue;
+    const last = fired[kind] ?? since;
+    const dueAt = last + setting.hours * 3_600_000;
+    const snoozeUntil = snoozed[kind];
+    const effectiveDueAt = snoozeUntil !== undefined ? Math.max(dueAt, snoozeUntil) : dueAt;
+    const remaining = effectiveDueAt - now;
+    if (soonest === null || remaining < soonest) soonest = remaining;
+  }
+  return soonest;
+}
+
+/** "42:17", or "1:03:40" past an hour — a countdown reads as a clock, not a duration */
+export function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(totalSeconds / 3_600);
+  const m = Math.floor((totalSeconds % 3_600) / 60);
+  const s = totalSeconds % 60;
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }

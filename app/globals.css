@@ -445,6 +445,26 @@ body {
   }
 }
 
+/* ---- a nudge arriving: it rises into the stack from behind whatever is
+   already standing there, so a second one reads as joining a queue rather
+   than as the first one having changed. ---- */
+@keyframes nudge-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@layer utilities {
+  .animate-nudge-rise {
+    animation: nudge-rise 320ms var(--ease-gentle) both;
+    transform-origin: bottom left;
+  }
+}
+
 /* ---- the login book opening ----
    The page arrives as a closed book held at an angle, straightens, and its
    cover swings open to the left. Three parts, one timeline: the book's own
@@ -555,7 +575,8 @@ body {
   .animate-slot-in,
   .animate-book-settle,
   .animate-shelf-in,
-  .animate-book-flight {
+  .animate-book-flight,
+  .animate-nudge-rise {
     animation: none;
   }
   /* the sprite holds still, but still delivers its nudges */

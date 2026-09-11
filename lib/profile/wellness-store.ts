@@ -28,6 +28,14 @@ const SINCE_KEY = "librari:wellness-since";
 /** how long "Snooze" holds a nudge back before it asks again */
 export const SNOOZE_MS = 5 * 60_000;
 
+/**
+ * How long a nudge nobody answered stands before it is given up on. Past
+ * this it has been answered by time one way or the other, and a bubble from
+ * this morning still sitting there at bedtime is clutter rather than a
+ * reminder. Its interval restarts when it goes, so it isn't simply re-raised.
+ */
+export const STALE_MS = 8 * 3_600_000;
+
 /** merges rather than replaces, so a new nudge kind (or a partial doc from
  * the account) doesn't break settings that were already saved */
 export function mergeWellness(partial: Partial<WellnessSettings> | undefined | null): WellnessSettings {
@@ -120,18 +128,21 @@ export function snoozeNudge(kind: NudgeKind, now = Date.now()): void {
 }
 
 /**
- * The nudge that is most overdue, or null when nothing is. Timers start from
+ * Every nudge that is currently due, oldest interval first. Timers start from
  * the first time the room is opened rather than from midnight — a two-hour
  * stretch reminder means two hours of sitting here.
+ *
+ * Plural because more than one can come due while the room is left open, and
+ * dropping all but the most overdue would quietly lose the others.
  */
-export function dueNudge(
+export function dueNudges(
   settings: WellnessSettings,
   fired: Partial<Record<NudgeKind, number>>,
   since: number,
   now: number,
   snoozed: Partial<Record<NudgeKind, number>> = {}
-): NudgeKind | null {
-  let best: { kind: NudgeKind; overdueBy: number } | null = null;
+): NudgeKind[] {
+  const due: Array<{ kind: NudgeKind; overdueBy: number }> = [];
   for (const { kind } of NUDGES) {
     const setting = settings[kind];
     if (!setting.enabled || setting.hours <= 0) continue;
@@ -139,9 +150,9 @@ export function dueNudge(
     if (until !== undefined && now < until) continue;
     const last = fired[kind] ?? since;
     const overdueBy = now - last - setting.hours * 3_600_000;
-    if (overdueBy >= 0 && (!best || overdueBy > best.overdueBy)) best = { kind, overdueBy };
+    if (overdueBy >= 0) due.push({ kind, overdueBy });
   }
-  return best?.kind ?? null;
+  return due.sort((a, b) => b.overdueBy - a.overdueBy).map((d) => d.kind);
 }
 
 /**
@@ -169,6 +180,14 @@ export function msUntilNextNudge(
     if (soonest === null || remaining < soonest) soonest = remaining;
   }
   return soonest;
+}
+
+/** "just now", "6 min ago", "2h ago" — recency at a glance, not a timestamp */
+export function formatAgo(ms: number): string {
+  const minutes = Math.floor(Math.max(0, ms) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.floor(minutes / 60)}h ago`;
 }
 
 /** "42:17", or "1:03:40" past an hour — a countdown reads as a clock, not a duration */

@@ -271,19 +271,6 @@ export function BookEditorScreen({
 
   return (
     <div className="animate-shelf-in absolute inset-0 z-[60] overflow-y-auto overflow-x-hidden bg-bg/70 backdrop-blur-xl">
-      {/* the way out, in the corner it is looked for. Sticky rather than
-          scrolled away with the top of the form: this screen is taller than
-          the viewport on a phone, and Cancel sits at the very bottom of it */}
-      <button
-        type="button"
-        onClick={onCancel}
-        aria-label="Close without saving"
-        title="Close"
-        className="fixed left-4 top-4 z-10 rounded-full border border-border bg-surface/80 p-2 text-ink-muted backdrop-blur transition-colors hover:text-ink sm:left-6 sm:top-6"
-      >
-        <X className="h-4 w-4" strokeWidth={1.75} />
-      </button>
-
       <div className="mx-auto grid min-h-full w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-10 pt-12 lg:grid-cols-[0.9fr_1fr] lg:gap-16 lg:px-10">
         {/* LEFT — the book as it will look on the shelf, filling in as you go.
             Comes second on small screens: the form is what you're here to
@@ -370,12 +357,25 @@ export function BookEditorScreen({
             small screens; sits to the right of the preview from lg up. */}
         <ThemedFrame themeId={themeId} className="order-1 w-full shadow-token-lg lg:order-2">
         <div className="w-full rounded-token-lg px-6 pb-5 pt-5 sm:px-7 sm:pb-5 sm:pt-6" style={themeType}>
-          <h2
-            className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink"
-            style={{ fontFamily: paper?.fontDisplay, letterSpacing: paper?.displayTracking }}
-          >
-            {mode === "add" ? "Add new book" : "Edit book"}
-          </h2>
+          <div className="flex items-start justify-between gap-4">
+            <h2
+              className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink"
+              style={{ fontFamily: paper?.fontDisplay, letterSpacing: paper?.displayTracking }}
+            >
+              {mode === "add" ? "Add new book" : "Edit book"}
+            </h2>
+            {/* the way out, in the corner it is looked for: Cancel sits at the
+                very bottom of a card taller than a phone viewport */}
+            <button
+              type="button"
+              onClick={onCancel}
+              aria-label="Close without saving"
+              title="Close"
+              className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+            >
+              <X className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </div>
 
           {destination && destination.shelves.length > 1 && (
             <div className="mt-6 flex flex-col gap-2">

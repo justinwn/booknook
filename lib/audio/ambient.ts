@@ -6,7 +6,8 @@ export type AmbientTrackId =
   | "ocean"
   | "birdsong"
   | "crickets"
-  | "library-hum";
+  | "library-hum"
+  | "booknook-theme";
 
 export interface AmbientTrack {
   id: AmbientTrackId;
@@ -28,6 +29,9 @@ export const AMBIENT_TRACKS: AmbientTrack[] = [
   { id: "birdsong", label: "Birdsong", blurb: "Rainforest at dawn", src: "/assets/audio/birdsong.mp3" },
   { id: "crickets", label: "Crickets", blurb: "One cricket, after dark", src: "/assets/audio/crickets.mp3" },
   { id: "library-hum", label: "Library hum", blurb: "A public room, air moving", src: "/assets/audio/library-hum.mp3" },
+  // the tune that used to play itself on the login page; a bed you choose
+  // rather than one that greets you at the door
+  { id: "booknook-theme", label: "BookNook theme", blurb: "The tune from the door", src: "/assets/audio/booknook-theme.mp3" },
 ];
 
 export interface AmbientTrackSetting {
@@ -49,15 +53,15 @@ export type AmbientSettings = Record<AmbientTrackId, AmbientTrackSetting>;
  * second weather.
  */
 export const DEFAULT_BED: Record<ThemeId, Partial<Record<AmbientTrackId, number>>> = {
-  "magical-garden": { birdsong: 0.3 },
-  "cozy-room": { rain: 0.3 },
-  "seaside-cafe": { ocean: 0.3 },
-  minecraft: { crickets: 0.3 },
-  "dark-academia": { rain: 0.3, "library-hum": 0.15 },
+  "magical-garden": { birdsong: 0.1 },
+  "cozy-room": { rain: 0.1 },
+  "seaside-cafe": { ocean: 0.1 },
+  minecraft: { crickets: 0.1 },
+  "dark-academia": { rain: 0.1, "library-hum": 0.1 },
 };
 
 /** a bed is background, not a soundtrack: it starts low and is turned up by hand */
-const DEFAULT_VOLUME = 0.3;
+const DEFAULT_VOLUME = 0.1;
 
 const SILENT: AmbientSettings = AMBIENT_TRACKS.reduce((acc, track) => {
   acc[track.id] = { on: false, volume: DEFAULT_VOLUME };

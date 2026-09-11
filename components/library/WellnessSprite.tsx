@@ -236,41 +236,17 @@ export function WellnessSprite({
   }
 
   /**
-   * A nudge fired purely by the countdown — no click involved — can be this
-   * page's very first attempt to play audio, and a browser that has had no
-   * interaction yet refuses that outright. Priming the same element on the
-   * page's first real gesture (muted, played, immediately paused) settles
-   * that with the browser well before the countdown ever reaches zero, so
-   * the later, un-gestured play() is trusted instead of silently dropped.
+   * Only ever rung by the bell in the reminder settings — a real nudge
+   * arriving on its own shows the bubble silently. A chime that fires from a
+   * timer lands without warning, at whatever the room's volume happens to be,
+   * and reads as the page making noise at random.
    */
   useEffect(() => {
-    function unlock() {
-      const el = ensureChime();
-      el.muted = true;
-      el.play()
-        .then(() => {
-          el.pause();
-          el.currentTime = 0;
-          el.muted = false;
-        })
-        .catch(() => {
-          el.muted = false;
-        });
-    }
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
+    if (!previewNudge) return;
     const el = ensureChime();
     el.currentTime = 0;
     void el.play().catch(() => {});
-  }, [active]);
+  }, [previewNudge]);
 
   // a new nudge always starts from a clean state, never mid-exit
   useEffect(() => {

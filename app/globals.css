@@ -563,3 +563,17 @@ body {
     animation: none !important;
   }
 }
+
+/*
+  iOS Safari zooms the whole page in when a field smaller than 16px takes
+  focus, which shunts the surrounding layout around and reads as fields
+  overlapping each other. Touch pointers only, so the typographic scale on
+  a desktop pointer is left where the design put it.
+*/
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}

@@ -254,8 +254,11 @@ export function BookEditorScreen({
   const textField =
     "w-full rounded-token-lg border border-border bg-surface-raised/70 px-5 py-2.5 text-sm text-ink placeholder:text-ink-soft focus:border-accent focus:outline-none";
   // the browser's own calendar glyph is a different icon in every engine and
-  // fights the theme; the field opens its picker on click instead
-  const dateField = `${textField} w-[10.5rem] [&::-webkit-calendar-picker-indicator]:hidden`;
+  // fights the theme; the field opens its picker on click instead.
+  // Width is the grid track's, never the control's own: Safari gives
+  // `input[type=date]` a much wider intrinsic size than Chromium and won't
+  // shrink below it, so a fixed width there overflows into the next field.
+  const dateField = `${textField} min-w-0 [&::-webkit-calendar-picker-indicator]:hidden`;
   const openPicker = (e: React.MouseEvent<HTMLInputElement>) => {
     const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
     el.showPicker?.();
@@ -477,8 +480,8 @@ export function BookEditorScreen({
           )}
 
           {datesApply && (
-            <div className="mt-6 flex flex-wrap gap-4">
-              <div className="flex flex-col gap-2">
+            <div className="mt-6 grid max-w-sm grid-cols-2 gap-4">
+              <div className="flex min-w-0 flex-col gap-2">
                 <label className={label} htmlFor="book-started">Started</label>
                 <input
                   id="book-started"
@@ -491,7 +494,7 @@ export function BookEditorScreen({
                 />
               </div>
               {finishApplies ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <label className={label} htmlFor="book-finished">Finished</label>
                   <input
                     id="book-finished"
@@ -508,13 +511,13 @@ export function BookEditorScreen({
               ) : (
                 // a book still being read has an open end: the field's place is
                 // held by what the note will actually say
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <span className={label}>Finished</span>
                   <span className="py-2.5 font-body text-sm text-ink-muted">- Present</span>
                 </div>
               )}
               {datesOutOfOrder && (
-                <p id="book-dates-error" role="alert" className="w-full font-body text-[11px] text-[#e9a49d]">
+                <p id="book-dates-error" role="alert" className="col-span-2 font-body text-[11px] text-[#e9a49d]">
                   The finish date is before the start date.
                 </p>
               )}

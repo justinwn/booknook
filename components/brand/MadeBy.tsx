@@ -1,6 +1,5 @@
 import clsx from "clsx";
 import Link from "next/link";
-import { FaqLink } from "./Faq";
 
 /**
  * The maker's credit and the small print beside it. One component so the
@@ -22,7 +21,9 @@ export function MadeBy({ className, linkClassName }: { className?: string; linkC
         Justine Win
       </a>
       {dot}
-      <FaqLink className={linkClassName} />
+      <Link href="/faq" className={link}>
+        FAQ
+      </Link>
       {dot}
       <Link href="/privacy" className={link}>
         Privacy

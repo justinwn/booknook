@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QrCode, Loader2, BookOpen, ChevronDown } from "lucide-react";
+import { QrCode, Loader2, BookOpen, ChevronDown, X } from "lucide-react";
 import type { Book, BookStatus } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import type { BookLookupResult } from "@/lib/books/providers";
@@ -144,8 +144,9 @@ export function BookEditorScreen({
   const canSubmit = title.trim().length > 0 && !duplicateIn && !shelfFull;
   /**
    * Reading progress belongs to books you have. A title on the wishlist has
-   * no status and no reading dates to record, so the whole group is absent
-   * rather than present and meaningless.
+   * no status, no reading dates and no verdict to record — you can't rate a
+   * book you haven't got yet — so those groups are absent rather than
+   * present and meaningless.
    */
   const progressApplies = owned;
   const datesApply = progressApplies && status !== "Dropped";
@@ -270,6 +271,19 @@ export function BookEditorScreen({
 
   return (
     <div className="animate-shelf-in absolute inset-0 z-[60] overflow-y-auto overflow-x-hidden bg-bg/70 backdrop-blur-xl">
+      {/* the way out, in the corner it is looked for. Sticky rather than
+          scrolled away with the top of the form: this screen is taller than
+          the viewport on a phone, and Cancel sits at the very bottom of it */}
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label="Close without saving"
+        title="Close"
+        className="fixed left-4 top-4 z-10 rounded-full border border-border bg-surface/80 p-2 text-ink-muted backdrop-blur transition-colors hover:text-ink sm:left-6 sm:top-6"
+      >
+        <X className="h-4 w-4" strokeWidth={1.75} />
+      </button>
+
       <div className="mx-auto grid min-h-full w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-10 pt-12 lg:grid-cols-[0.9fr_1fr] lg:gap-16 lg:px-10">
         {/* LEFT — the book as it will look on the shelf, filling in as you go.
             Comes second on small screens: the form is what you're here to
@@ -524,6 +538,7 @@ export function BookEditorScreen({
             </div>
           )}
 
+          {progressApplies && (
           <fieldset className="mt-6 flex flex-col gap-2">
             <legend className={label}>Rating</legend>
             <div className="flex gap-1.5">
@@ -545,6 +560,7 @@ export function BookEditorScreen({
               ))}
             </div>
           </fieldset>
+          )}
 
           <div className="mt-6 flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">

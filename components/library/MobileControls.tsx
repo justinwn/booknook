@@ -8,7 +8,7 @@ const MENU: { id: ControlId; label: string; icon: typeof Waves }[] = [
   { id: "reminders", label: "Reminders", icon: ListChecks },
   { id: "ambient", label: "Ambient", icon: Waves },
   { id: "profile", label: "Profile", icon: User },
-  { id: "theme", label: "Library", icon: Palette },
+  { id: "theme", label: "Theme", icon: Palette },
 ];
 
 /**

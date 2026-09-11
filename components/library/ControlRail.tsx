@@ -64,7 +64,7 @@ export function ControlRail({ active, onSelect, beckonAdd }: ControlRailProps) {
         />
         <SceneControl
           icon={<Palette className="h-5 w-5" strokeWidth={1.5} />}
-          label="Library"
+          label="Theme"
           active={active === "theme"}
           onClick={() => onSelect("theme")}
         />

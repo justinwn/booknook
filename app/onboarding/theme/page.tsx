@@ -63,12 +63,9 @@ export default function ThemeSelectionPage() {
         </div>
 
         <div className="w-full max-w-md justify-self-center lg:justify-self-start">
-          <h1 className="font-body text-xs font-semibold uppercase tracking-[0.18em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-            Pick your library mood
+          <h1 className="font-display text-[1.4rem] leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+            Pick a theme
           </h1>
-          <p className="mt-2 font-body text-sm text-white/65 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-            It plays behind your whole library. You can change it any time.
-          </p>
 
           <div role="radiogroup" aria-label="Library mood" className="mt-7 flex flex-col gap-2.5">
             {THEMES.map((t) => {
@@ -120,12 +117,12 @@ export default function ThemeSelectionPage() {
           <div className="mt-8 flex justify-end">
             <Button
               type="button"
-              variant="solid"
+              variant="outline"
               onClick={handleDone}
               loading={saving}
               className="px-8"
             >
-              Done
+              Save
             </Button>
           </div>
         </div>

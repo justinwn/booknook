@@ -2,7 +2,15 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import clsx from "clsx";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "ghost" | "pill-dark" | "pill-light" | "pill-outline" | "solid" | "outline";
+  variant?:
+    | "primary"
+    | "ghost"
+    | "pill-dark"
+    | "pill-light"
+    | "pill-outline"
+    | "solid"
+    | "outline"
+    | "light";
   icon?: ReactNode;
   loading?: boolean;
 }
@@ -17,6 +25,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  *   light gallery pages
  * - solid / outline: the non-themed form pair — one dark action, one bordered
  *   alternative under it, both full width
+ * - light: solid's mirror, for an action standing on a dark scene rather than
+ *   on a card. Its hover dims the white rather than swapping the fill out,
+ *   which is what outline's does — fine over a pale page, invisible over a
+ *   wallpaper
  *
  * Tactile press-down on click rather than a flat color swap.
  */
@@ -46,6 +58,8 @@ export function Button({
         // `w-full` baked in here would fight every non-form use of them
         variant === "solid" &&
           "rounded-xl bg-[#2b2a2e] px-5 py-3.5 text-[15px] font-semibold text-white hover:bg-[#3a3940]",
+        variant === "light" &&
+          "rounded-xl bg-white px-5 py-3.5 text-[15px] font-semibold text-gallery-ink shadow-token-lg hover:bg-white/90",
         variant === "outline" &&
           "rounded-xl border border-gallery-ink/15 bg-white px-5 py-3.5 text-[15px] font-semibold text-gallery-ink shadow-[0_1px_2px_rgba(16,16,20,0.05)] hover:bg-gallery-ink/[0.03]",
         variant === "pill-outline" &&

@@ -15,7 +15,6 @@ import {
   msUntilNextNudge,
   NUDGES,
   snoozeNudge,
-  STALE_MS,
   type NudgeKind,
 } from "@/lib/profile/wellness-store";
 import { REMINDER_SRC, REMINDER_VOLUME } from "@/lib/audio/ambient";
@@ -189,13 +188,8 @@ export function WellnessSprite({
    * arrived so it can say how long it has been waiting. More than one can
    * come due while the room is left open, and they queue rather than
    * replacing each other.
-   *
-   * The ref mirrors the state because the once-a-second tick reads the list,
-   * writes localStorage from what it finds, and then sets the new one —
-   * side effects that have no business running inside a state updater.
    */
   const [standing, setStanding] = useState<Standing[]>([]);
-  const standingRef = useRef<Standing[]>([]);
   const [travel, setTravel] = useState(0);
   /** the kinds playing their exit; each clears when its own animation ends */
   const [exiting, setExiting] = useState<NudgeKind[]>([]);
@@ -230,29 +224,16 @@ export function WellnessSprite({
   useEffect(() => {
     const tick = () => {
       const settings = loadWellness();
+      const fired = loadFired();
       const snoozed = loadSnoozed();
       const now = Date.now();
+      const due = dueNudges(settings, fired, since.current!, now, snoozed);
 
-      const prev = standingRef.current;
-      // one nobody answered all day has been answered by time; it goes, and
-      // its interval restarts so it isn't raised again the moment it does
-      const stale = prev.filter((n) => now - n.at >= STALE_MS);
-      stale.forEach((n) => markFired(n.kind));
-      // re-read after those writes, or the same tick would re-raise what it
-      // has just given up on
-      const fired = loadFired();
-      const kept = stale.length ? prev.filter((n) => now - n.at < STALE_MS) : prev;
-
-      const held = new Set(kept.map((n) => n.kind));
-      const arrived = dueNudges(settings, fired, since.current!, now, snoozed)
-        .filter((kind) => !held.has(kind))
-        .map((kind) => ({ kind, at: now }));
-
-      if (stale.length || arrived.length) {
-        const next = [...kept, ...arrived];
-        standingRef.current = next;
-        setStanding(next);
-      }
+      setStanding((prev) => {
+        const held = new Set(prev.map((n) => n.kind));
+        const arrived = due.filter((kind) => !held.has(kind)).map((kind) => ({ kind, at: now }));
+        return arrived.length ? [...prev, ...arrived] : prev;
+      });
       setRemainingMs(msUntilNextNudge(settings, fired, since.current!, now, snoozed));
     };
     tick();
@@ -293,17 +274,22 @@ export function WellnessSprite({
   const lineFor = (kind: NudgeKind) =>
     sprite.lines[kind] ?? NUDGES.find((n) => n.kind === kind)?.message ?? "";
 
-  /** what is on screen: a test alone, otherwise the real queue */
+  /**
+   * What is on screen: a test alone, otherwise the real queue newest first.
+   * Only the card on top is readable and answerable; the rest are a pile
+   * underneath it, and answering the top one uncovers the next.
+   */
   const shown: Standing[] = previewNudge
     ? [{ kind: previewNudge, at: previewAt ?? Date.now() }]
-    : standing;
-  /** the one the character is acting out — the most recent to arrive */
-  const newest = shown.length ? shown[shown.length - 1].kind : null;
+    : [...standing].reverse();
+  const top = shown[0] ?? null;
+  /** two edges behind the top card is enough to read as a pile */
+  const behind = shown.slice(1, 3);
+  /** the one the character is acting out */
+  const newest = top?.kind ?? null;
 
   function forget(kind: NudgeKind) {
-    const next = standingRef.current.filter((n) => n.kind !== kind);
-    standingRef.current = next;
-    setStanding(next);
+    setStanding((prev) => prev.filter((n) => n.kind !== kind));
   }
 
   /**
@@ -344,6 +330,23 @@ export function WellnessSprite({
     });
   }
 
+  /**
+   * Clear the pile in one go. Every one of them counts as answered, same as
+   * Done — leaving their intervals untouched would only raise the whole pile
+   * again on the next tick.
+   */
+  function dismissAll() {
+    if (!top) return;
+    dismiss(top.kind, () => {
+      if (previewNudge) {
+        onPreviewEnd?.();
+        return;
+      }
+      standing.forEach((n) => markFired(n.kind));
+      setStanding([]);
+    });
+  }
+
   const clip = newest ? sprite.actions[newest] : sprite.walk;
 
   return (
@@ -361,25 +364,39 @@ export function WellnessSprite({
         </p>
       )}
 
-      {shown.length > 0 && (
+      {top && (
         <div
           style={{
             // flush left with the clock underneath rather than chasing the
             // character along its stroll, and anchored by its bottom edge so
-            // it clears the sprite however tall the messages make it. Sprite
-            // cells differ in how much headroom they leave (Steve fills his
-            // to the top), so the offset is the full cell height plus a gap
-            // rather than a fraction of it — anything less covers the head.
+            // it clears the sprite however tall the message makes it. The
+            // pile's edges hang below the top card, so they are added to the
+            // gap rather than left to sit on the character's head.
             left: 0,
-            bottom: sprite.height + 10,
+            bottom: sprite.height + 10 + behind.length * 7,
           }}
-          className="pointer-events-auto absolute z-10 flex w-[19rem] flex-col gap-2"
+          className="pointer-events-auto absolute z-10 w-[19rem]"
         >
-          {/* oldest at the top, so a new one rises in nearest the character
-              and the pile reads in the order it arrived */}
-          {shown.map((item) => (
+          <div className="relative">
+            {/* the pile under the top card: edges only, no content to read.
+                Each sits a little lower and a little narrower than the one
+                over it, which is what makes a stack read as depth rather
+                than as a list that failed to lay itself out. */}
+            {behind.map((item, i) => (
+              <div
+                key={item.kind}
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-full rounded-token-lg shadow-token-lg"
+                style={{
+                  background: paper.background,
+                  transform: `translateY(${(i + 1) * 7}px) scale(${1 - (i + 1) * 0.035})`,
+                  opacity: 1 - (i + 1) * 0.25,
+                  zIndex: -(i + 1),
+                }}
+              />
+            ))}
+
             <div
-              key={item.kind}
               role="status"
               style={{
                 background: paper.background,
@@ -387,32 +404,50 @@ export function WellnessSprite({
                 fontFamily: paper.fontBody,
                 ["--bubble-out-ms" as string]: `${BUBBLE_OUT_MS}ms`,
               }}
-              className={`rounded-token-lg px-5 py-4 text-left shadow-token-lg ${
-                exiting.includes(item.kind) ? "animate-bubble-out" : "animate-nudge-rise"
+              className={`relative rounded-token-lg px-5 py-4 text-left shadow-token-lg ${
+                exiting.includes(top.kind) ? "animate-nudge-dismiss" : "animate-nudge-rise"
               }`}
             >
               <span className="mb-1.5 block text-[10px] uppercase tracking-[0.12em] opacity-55">
-                {formatAgo(Date.now() - item.at)}
+                {formatAgo(Date.now() - top.at)}
               </span>
-              <span className="block text-[13px] leading-relaxed">{lineFor(item.kind)}</span>
+              <span className="block text-[13px] leading-relaxed">{lineFor(top.kind)}</span>
               <div className="mt-3.5 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => done(item.kind)}
+                  onClick={() => done(top.kind)}
                   className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-transform hover:-translate-y-px"
                 >
                   Done
                 </button>
                 <button
                   type="button"
-                  onClick={() => snooze(item.kind)}
+                  onClick={() => snooze(top.kind)}
                   className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] uppercase tracking-wide opacity-60 transition hover:opacity-100"
                 >
                   Snooze 5m
                 </button>
               </div>
+
+              {shown.length > 1 && (
+                <div
+                  className="mt-3.5 flex items-center justify-between gap-3 border-t pt-2.5 text-[11px]"
+                  style={{ borderColor: "currentColor", opacity: 0.55 }}
+                >
+                  <span>
+                    {shown.length - 1} more reminder{shown.length - 1 === 1 ? "" : "s"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={dismissAll}
+                    className="font-semibold uppercase tracking-wide underline underline-offset-2 transition hover:no-underline"
+                  >
+                    Dismiss all
+                  </button>
+                </div>
+              )}
             </div>
-          ))}
+          </div>
         </div>
       )}
 

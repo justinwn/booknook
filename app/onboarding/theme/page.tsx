@@ -117,7 +117,7 @@ export default function ThemeSelectionPage() {
           <div className="mt-8 flex justify-end">
             <Button
               type="button"
-              variant="outline"
+              variant="light"
               onClick={handleDone}
               loading={saving}
               className="px-8"

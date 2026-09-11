@@ -465,6 +465,25 @@ body {
   }
 }
 
+/* ---- the top card of the stack being answered: it lifts away and fades,
+   uncovering the one behind it. Up rather than down, so it reads as being
+   taken off the pile rather than dropped back onto it. ---- */
+@keyframes nudge-dismiss {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+}
+@layer utilities {
+  .animate-nudge-dismiss {
+    animation: nudge-dismiss var(--bubble-out-ms, 320ms) cubic-bezier(0.36, 0, 0.66, 1) forwards;
+  }
+}
+
 /* ---- the login book opening ----
    The page arrives as a closed book held at an angle, straightens, and its
    cover swings open to the left. Three parts, one timeline: the book's own
@@ -576,7 +595,8 @@ body {
   .animate-book-settle,
   .animate-shelf-in,
   .animate-book-flight,
-  .animate-nudge-rise {
+  .animate-nudge-rise,
+  .animate-nudge-dismiss {
     animation: none;
   }
   /* the sprite holds still, but still delivers its nudges */

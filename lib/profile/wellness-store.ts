@@ -28,14 +28,6 @@ const SINCE_KEY = "librari:wellness-since";
 /** how long "Snooze" holds a nudge back before it asks again */
 export const SNOOZE_MS = 5 * 60_000;
 
-/**
- * How long a nudge nobody answered stands before it is given up on. Past
- * this it has been answered by time one way or the other, and a bubble from
- * this morning still sitting there at bedtime is clutter rather than a
- * reminder. Its interval restarts when it goes, so it isn't simply re-raised.
- */
-export const STALE_MS = 8 * 3_600_000;
-
 /** merges rather than replaces, so a new nudge kind (or a partial doc from
  * the account) doesn't break settings that were already saved */
 export function mergeWellness(partial: Partial<WellnessSettings> | undefined | null): WellnessSettings {

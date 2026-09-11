@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ThemeId } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import {
-  dueNudge,
+  dueNudges,
+  formatAgo,
   formatCountdown,
   loadFired,
   loadSince,
@@ -161,6 +162,12 @@ const SPRITES: Record<ThemeId, SpriteSet> = {
 /** kept in step with the bubble-out keyframes in globals.css */
 const BUBBLE_OUT_MS = 320;
 
+/** one nudge standing on screen, and when it arrived */
+interface Standing {
+  kind: NudgeKind;
+  at: number;
+}
+
 export function WellnessSprite({
   themeId,
   paper,
@@ -176,16 +183,24 @@ export function WellnessSprite({
   onPreviewEnd?: () => void;
 }) {
   const sprite = SPRITES[themeId] ?? minecraft;
-  const [nudge, setNudge] = useState<NudgeKind | null>(null);
   /**
-   * A previewed nudge takes the stage over a real one. It behaves identically
-   * on screen, but Done and Snooze only clear it: a test must not reset a
-   * timer or write a snooze, or testing would quietly move the real schedule.
+   * Every nudge currently standing, oldest first, each with the moment it
+   * arrived so it can say how long it has been waiting. More than one can
+   * come due while the room is left open, and they queue rather than
+   * replacing each other.
    */
-  const active = previewNudge ?? nudge;
+  const [standing, setStanding] = useState<Standing[]>([]);
   const [travel, setTravel] = useState(0);
-  /** true while the bubble plays its exit; the nudge clears when it finishes */
-  const [exiting, setExiting] = useState(false);
+  /** the kinds playing their exit; each clears when its own animation ends */
+  const [exiting, setExiting] = useState<NudgeKind[]>([]);
+  /**
+   * A previewed nudge takes the stage alone, so a test can't be mistaken for
+   * the real queue behind it. Done and Snooze only clear it: a test must not
+   * reset a timer or write a snooze, or testing would quietly move the real
+   * schedule.
+   */
+  const [previewAt, setPreviewAt] = useState<number | null>(null);
+  useEffect(() => setPreviewAt(previewNudge ? Date.now() : null), [previewNudge]);
   const wrapRef = useRef<HTMLDivElement>(null);
   /** persisted, so a reload doesn't quietly restart the wait — see loadSince */
   const since = useRef<number | null>(null);
@@ -212,7 +227,13 @@ export function WellnessSprite({
       const fired = loadFired();
       const snoozed = loadSnoozed();
       const now = Date.now();
-      setNudge((current) => current ?? dueNudge(settings, fired, since.current!, now, snoozed));
+      const due = dueNudges(settings, fired, since.current!, now, snoozed);
+
+      setStanding((prev) => {
+        const held = new Set(prev.map((n) => n.kind));
+        const arrived = due.filter((kind) => !held.has(kind)).map((kind) => ({ kind, at: now }));
+        return arrived.length ? [...prev, ...arrived] : prev;
+      });
       setRemainingMs(msUntilNextNudge(settings, fired, since.current!, now, snoozed));
     };
     tick();
@@ -236,96 +257,97 @@ export function WellnessSprite({
   }
 
   /**
-   * A nudge fired purely by the countdown — no click involved — can be this
-   * page's very first attempt to play audio, and a browser that has had no
-   * interaction yet refuses that outright. Priming the same element on the
-   * page's first real gesture (muted, played, immediately paused) settles
-   * that with the browser well before the countdown ever reaches zero, so
-   * the later, un-gestured play() is trusted instead of silently dropped.
+   * Only ever rung by the bell in the reminder settings — a real nudge
+   * arriving on its own shows the bubble silently. A chime that fires from a
+   * timer lands without warning, at whatever the room's volume happens to be,
+   * and reads as the page making noise at random.
    */
   useEffect(() => {
-    function unlock() {
-      const el = ensureChime();
-      el.muted = true;
-      el.play()
-        .then(() => {
-          el.pause();
-          el.currentTime = 0;
-          el.muted = false;
-        })
-        .catch(() => {
-          el.muted = false;
-        });
-    }
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
+    if (!previewNudge) return;
     const el = ensureChime();
     el.currentTime = 0;
     void el.play().catch(() => {});
-  }, [active]);
-
-  // a new nudge always starts from a clean state, never mid-exit
-  useEffect(() => {
-    if (active) setExiting(false);
-  }, [active]);
+  }, [previewNudge]);
 
   // the character speaks in its own voice; NUDGES holds the plain-text
   // fallback for a sprite set that hasn't been given lines
-  const message = useMemo(
-    () =>
-      active
-        ? sprite.lines[active] ?? NUDGES.find((n) => n.kind === active)?.message ?? ""
-        : "",
-    [active, sprite]
-  );
+  const lineFor = (kind: NudgeKind) =>
+    sprite.lines[kind] ?? NUDGES.find((n) => n.kind === kind)?.message ?? "";
 
   /**
-   * Both answers dismiss the same way: play the bubble out, then commit. The
+   * What is on screen: a test alone, otherwise the real queue newest first.
+   * Only the card on top is readable and answerable; the rest are a pile
+   * underneath it, and answering the top one uncovers the next.
+   */
+  const shown: Standing[] = previewNudge
+    ? [{ kind: previewNudge, at: previewAt ?? Date.now() }]
+    : [...standing].reverse();
+  const top = shown[0] ?? null;
+  /** two edges behind the top card is enough to read as a pile */
+  const behind = shown.slice(1, 3);
+  /** the one the character is acting out */
+  const newest = top?.kind ?? null;
+
+  function forget(kind: NudgeKind) {
+    setStanding((prev) => prev.filter((n) => n.kind !== kind));
+  }
+
+  /**
+   * Both answers dismiss the same way: play that bubble out, then commit. The
    * commit is deferred rather than run first so the message is still on screen
    * while it leaves, and a test only ever clears itself.
    */
-  function dismiss(commit: () => void) {
-    if (exiting) return;
-    setExiting(true);
+  function dismiss(kind: NudgeKind, commit: () => void) {
+    if (exiting.includes(kind)) return;
+    setExiting((prev) => [...prev, kind]);
     window.setTimeout(() => {
-      setExiting(false);
+      setExiting((prev) => prev.filter((k) => k !== kind));
       commit();
     }, BUBBLE_OUT_MS);
   }
 
   /** done with it: the full interval restarts from now */
-  function done() {
-    dismiss(() => {
+  function done(kind: NudgeKind) {
+    dismiss(kind, () => {
       if (previewNudge) {
         onPreviewEnd?.();
         return;
       }
-      if (nudge) markFired(nudge);
-      setNudge(null);
+      markFired(kind);
+      forget(kind);
     });
   }
 
   /** not now: it comes back in five minutes, timer untouched */
-  function snooze() {
-    dismiss(() => {
+  function snooze(kind: NudgeKind) {
+    dismiss(kind, () => {
       if (previewNudge) {
         onPreviewEnd?.();
         return;
       }
-      if (nudge) snoozeNudge(nudge);
-      setNudge(null);
+      snoozeNudge(kind);
+      forget(kind);
     });
   }
 
-  const clip = active ? sprite.actions[active] : sprite.walk;
+  /**
+   * Clear the pile in one go. Every one of them counts as answered, same as
+   * Done — leaving their intervals untouched would only raise the whole pile
+   * again on the next tick.
+   */
+  function dismissAll() {
+    if (!top) return;
+    dismiss(top.kind, () => {
+      if (previewNudge) {
+        onPreviewEnd?.();
+        return;
+      }
+      standing.forEach((n) => markFired(n.kind));
+      setStanding([]);
+    });
+  }
+
+  const clip = newest ? sprite.actions[newest] : sprite.walk;
 
   return (
     <div
@@ -333,7 +355,7 @@ export function WellnessSprite({
       className="pointer-events-none relative w-full select-none"
       style={{ height: sprite.height, ["--stroll-x" as string]: `${travel}px` }}
     >
-      {!active && remainingMs !== null && (
+      {!newest && remainingMs !== null && (
         <p
           className="pointer-events-none absolute left-0 select-none whitespace-nowrap text-[11px] uppercase tracking-[0.14em] text-white/60"
           style={{ bottom: sprite.height + 6, fontFamily: paper.fontBody }}
@@ -342,52 +364,98 @@ export function WellnessSprite({
         </p>
       )}
 
-      {active && (
+      {top && (
         <div
-          role="status"
           style={{
             // flush left with the clock underneath rather than chasing the
             // character along its stroll, and anchored by its bottom edge so
-            // it clears the sprite however tall the message makes it. Sprite
-            // cells differ in how much headroom they leave (Steve fills his
-            // to the top), so the offset is the full cell height plus a gap
-            // rather than a fraction of it — anything less covers the head.
+            // it clears the sprite however tall the message makes it. The
+            // pile's edges hang below the top card, so they are added to the
+            // gap rather than left to sit on the character's head.
             left: 0,
-            bottom: sprite.height + 10,
-            background: paper.background,
-            color: paper.ink,
-            fontFamily: paper.fontBody,
-            ["--bubble-out-ms" as string]: `${BUBBLE_OUT_MS}ms`,
+            bottom: sprite.height + 10 + behind.length * 7,
           }}
-          className={`pointer-events-auto absolute z-10 w-[19rem] rounded-token-lg px-5 py-4 text-left shadow-token-lg ${
-            exiting ? "animate-bubble-out" : ""
-          }`}
+          className="pointer-events-auto absolute z-10 w-[19rem]"
         >
-          <span className="block text-[13px] leading-relaxed">{message}</span>
-          <div className="mt-3.5 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={done}
-              className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-transform hover:-translate-y-px"
+          <div className="relative">
+            {/* the pile under the top card: edges only, no content to read.
+                Each sits a little lower and a little narrower than the one
+                over it, which is what makes a stack read as depth rather
+                than as a list that failed to lay itself out. */}
+            {behind.map((item, i) => (
+              <div
+                key={item.kind}
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-full rounded-token-lg shadow-token-lg"
+                style={{
+                  background: paper.background,
+                  transform: `translateY(${(i + 1) * 7}px) scale(${1 - (i + 1) * 0.035})`,
+                  opacity: 1 - (i + 1) * 0.25,
+                  zIndex: -(i + 1),
+                }}
+              />
+            ))}
+
+            <div
+              role="status"
+              style={{
+                background: paper.background,
+                color: paper.ink,
+                fontFamily: paper.fontBody,
+                ["--bubble-out-ms" as string]: `${BUBBLE_OUT_MS}ms`,
+              }}
+              className={`relative rounded-token-lg px-5 py-4 text-left shadow-token-lg ${
+                exiting.includes(top.kind) ? "animate-nudge-dismiss" : "animate-nudge-rise"
+              }`}
             >
-              Done
-            </button>
-            <button
-              type="button"
-              onClick={snooze}
-              className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] uppercase tracking-wide opacity-60 transition hover:opacity-100"
-            >
-              Snooze 5m
-            </button>
+              <span className="mb-1.5 block text-[10px] uppercase tracking-[0.12em] opacity-55">
+                {formatAgo(Date.now() - top.at)}
+              </span>
+              <span className="block text-[13px] leading-relaxed">{lineFor(top.kind)}</span>
+              <div className="mt-3.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => done(top.kind)}
+                  className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-transform hover:-translate-y-px"
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() => snooze(top.kind)}
+                  className="rounded-token-sm border border-current px-3 py-1.5 text-[10px] uppercase tracking-wide opacity-60 transition hover:opacity-100"
+                >
+                  Snooze 5m
+                </button>
+              </div>
+
+              {shown.length > 1 && (
+                <div
+                  className="mt-3.5 flex items-center justify-between gap-3 border-t pt-2.5 text-[11px]"
+                  style={{ borderColor: "currentColor", opacity: 0.55 }}
+                >
+                  <span>
+                    {shown.length - 1} more reminder{shown.length - 1 === 1 ? "" : "s"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={dismissAll}
+                    className="font-semibold uppercase tracking-wide underline underline-offset-2 transition hover:no-underline"
+                  >
+                    Dismiss all
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       <button
         type="button"
-        onClick={active ? done : onOpenSettings}
-        aria-label={active ? message : "Reminder settings"}
-        title={active ? message : "Reminder settings"}
+        onClick={newest ? () => done(newest) : onOpenSettings}
+        aria-label={newest ? lineFor(newest) : "Reminder settings"}
+        title={newest ? lineFor(newest) : "Reminder settings"}
         className="pointer-events-auto absolute bottom-0 left-0"
         style={{
           width: sprite.width,
@@ -400,8 +468,8 @@ export function WellnessSprite({
           filter: sprite.filter,
           // both animations always run; pausing the stroll (rather than
           // removing it) keeps the character where it stopped
-          animation: `sprite-step ${active ? "1.1s" : "0.9s"} steps(${clip.frames}) infinite, sprite-stroll 26s ease-in-out infinite`,
-          animationPlayState: active ? "running, paused" : "running, running",
+          animation: `sprite-step ${newest ? "1.1s" : "0.9s"} steps(${clip.frames}) infinite, sprite-stroll 26s ease-in-out infinite`,
+          animationPlayState: newest ? "running, paused" : "running, running",
         }}
       />
     </div>

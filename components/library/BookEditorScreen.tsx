@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QrCode, Loader2, BookOpen, ChevronDown } from "lucide-react";
+import { QrCode, Loader2, BookOpen, ChevronDown, X } from "lucide-react";
 import type { Book, BookStatus } from "@/lib/types";
 import type { PaperTreatment } from "@/lib/theme/themes";
 import type { BookLookupResult } from "@/lib/books/providers";
@@ -30,8 +30,10 @@ interface BookEditorScreenProps {
    */
   owned: boolean;
   /**
-   * Adding from the room has no shelf context, so the destination is picked
-   * here. Omitted in edit mode and wherever the shelf is already implied.
+   * Which shelf this book is headed for. Adding from the room has no shelf
+   * context, and editing can move a book between the two — a wishlist title
+   * you have since bought belongs on the owned shelf, where it can carry a
+   * status and a verdict. Omitted wherever the shelf is already implied.
    */
   destination?: {
     shelves: LibraryShelf[];
@@ -144,8 +146,9 @@ export function BookEditorScreen({
   const canSubmit = title.trim().length > 0 && !duplicateIn && !shelfFull;
   /**
    * Reading progress belongs to books you have. A title on the wishlist has
-   * no status and no reading dates to record, so the whole group is absent
-   * rather than present and meaningless.
+   * no status, no reading dates and no verdict to record — you can't rate a
+   * book you haven't got yet — so those groups are absent rather than
+   * present and meaningless.
    */
   const progressApplies = owned;
   const datesApply = progressApplies && status !== "Dropped";
@@ -234,7 +237,9 @@ export function BookEditorScreen({
         spineBand: spine?.band,
         dewey,
         dimensions: book?.dimensions ?? { heightMm: 198, widthMm: 129, thicknessMm: thickness },
-        rating: rating || undefined,
+        // a verdict belongs to a book you have; moving one to the wishlist
+        // drops it the same way its status and reading dates go
+        rating: owned ? rating || undefined : undefined,
         note: note.trim() || undefined,
         tags: book?.tags ?? [],
         owned,
@@ -254,8 +259,11 @@ export function BookEditorScreen({
   const textField =
     "w-full rounded-token-lg border border-border bg-surface-raised/70 px-5 py-2.5 text-sm text-ink placeholder:text-ink-soft focus:border-accent focus:outline-none";
   // the browser's own calendar glyph is a different icon in every engine and
-  // fights the theme; the field opens its picker on click instead
-  const dateField = `${textField} w-[10.5rem] [&::-webkit-calendar-picker-indicator]:hidden`;
+  // fights the theme; the field opens its picker on click instead.
+  // Width is the grid track's, never the control's own: Safari gives
+  // `input[type=date]` a much wider intrinsic size than Chromium and won't
+  // shrink below it, so a fixed width there overflows into the next field.
+  const dateField = `${textField} min-w-0 [&::-webkit-calendar-picker-indicator]:hidden`;
   const openPicker = (e: React.MouseEvent<HTMLInputElement>) => {
     const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
     el.showPicker?.();
@@ -353,12 +361,25 @@ export function BookEditorScreen({
             small screens; sits to the right of the preview from lg up. */}
         <ThemedFrame themeId={themeId} className="order-1 w-full shadow-token-lg lg:order-2">
         <div className="w-full rounded-token-lg px-6 pb-5 pt-5 sm:px-7 sm:pb-5 sm:pt-6" style={themeType}>
-          <h2
-            className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink"
-            style={{ fontFamily: paper?.fontDisplay, letterSpacing: paper?.displayTracking }}
-          >
-            {mode === "add" ? "Add new book" : "Edit book"}
-          </h2>
+          <div className="flex items-start justify-between gap-4">
+            <h2
+              className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink"
+              style={{ fontFamily: paper?.fontDisplay, letterSpacing: paper?.displayTracking }}
+            >
+              {mode === "add" ? "Add new book" : "Edit book"}
+            </h2>
+            {/* the way out, in the corner it is looked for: Cancel sits at the
+                very bottom of a card taller than a phone viewport */}
+            <button
+              type="button"
+              onClick={onCancel}
+              aria-label="Close without saving"
+              title="Close"
+              className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+            >
+              <X className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </div>
 
           {destination && destination.shelves.length > 1 && (
             <div className="mt-6 flex flex-col gap-2">
@@ -477,8 +498,8 @@ export function BookEditorScreen({
           )}
 
           {datesApply && (
-            <div className="mt-6 flex flex-wrap gap-4">
-              <div className="flex flex-col gap-2">
+            <div className="mt-6 grid max-w-sm grid-cols-2 gap-4">
+              <div className="flex min-w-0 flex-col gap-2">
                 <label className={label} htmlFor="book-started">Started</label>
                 <input
                   id="book-started"
@@ -491,7 +512,7 @@ export function BookEditorScreen({
                 />
               </div>
               {finishApplies ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <label className={label} htmlFor="book-finished">Finished</label>
                   <input
                     id="book-finished"
@@ -508,19 +529,20 @@ export function BookEditorScreen({
               ) : (
                 // a book still being read has an open end: the field's place is
                 // held by what the note will actually say
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <span className={label}>Finished</span>
                   <span className="py-2.5 font-body text-sm text-ink-muted">- Present</span>
                 </div>
               )}
               {datesOutOfOrder && (
-                <p id="book-dates-error" role="alert" className="w-full font-body text-[11px] text-[#e9a49d]">
+                <p id="book-dates-error" role="alert" className="col-span-2 font-body text-[11px] text-[#e9a49d]">
                   The finish date is before the start date.
                 </p>
               )}
             </div>
           )}
 
+          {progressApplies && (
           <fieldset className="mt-6 flex flex-col gap-2">
             <legend className={label}>Rating</legend>
             <div className="flex gap-1.5">
@@ -542,6 +564,7 @@ export function BookEditorScreen({
               ))}
             </div>
           </fieldset>
+          )}
 
           <div className="mt-6 flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">

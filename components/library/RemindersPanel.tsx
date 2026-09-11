@@ -235,7 +235,7 @@ export function RemindersPanel({
             Nudges
           </h3>
           <p className="mt-1 font-body text-[11px] text-ink-soft">
-            Your companion walks over to remind you. Test one to see and hear it now.
+            Your companion walks over to remind you. Ring one to see it.
           </p>
 
           <ul className="mt-3 flex flex-col gap-2.5">

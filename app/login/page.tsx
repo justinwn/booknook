@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoginBackdrop } from "@/components/login/LoginBackdrop";
-import { LoginSound } from "@/components/login/LoginSound";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
@@ -129,15 +128,10 @@ function LoginScreen() {
           card and nothing rotates. */}
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl items-center justify-center px-5 py-14">
         <div className="w-full">
-          {/* the perspective lives on this wrapper rather than further out, so
-              the sound toggle can sit at the book's own top corner without
-              joining the 3D subtree the book rotates inside */}
           <div
             className="relative mx-auto w-full max-w-[46rem] lg:max-w-[54rem]"
             style={opened ? undefined : { perspective: "2200px" }}
           >
-            <LoginSound opened={opened} className="absolute left-6 top-6 z-30" />
-
             <div
               className={`w-full ${opened ? "" : "animate-book-straighten"}`}
               style={opened ? undefined : { transformStyle: "preserve-3d" }}

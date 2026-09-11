@@ -52,14 +52,19 @@ export function BookSpine({ book, scale = 1, animateIn = false, onSelect }: Book
         }}
       >
         <div className="h-[6%] w-full" style={{ background: band }} />
-        {/* vertical-rl text wraps into extra columns when the spine is short,
-            which reads as garbage at small sizes — keep it to a single line
-            and let it truncate instead */}
-        <span
-          className="flex-1 overflow-hidden whitespace-nowrap px-[8%] py-[6%] font-display text-[0.55rem] leading-tight text-white/85"
-          style={{ writingMode: "vertical-rl", textOverflow: "ellipsis" }}
-        >
-          {book.title}
+        {/* vertical-rl stacks wrapped lines across the spine's width rather
+            than down it, so the line cap is a width. line-clamp alone can't
+            be trusted here — `-webkit-box` still paints the overflowing line
+            in this writing mode — so the block size is what actually holds it
+            to two: 2 × the 0.55rem/1.25 line box, with the clamp left on for
+            the ellipsis it adds. */}
+        <span className="flex flex-1 items-center justify-center overflow-hidden px-[8%] py-[6%]">
+          <span
+            className="line-clamp-2 max-h-full overflow-hidden font-display text-[0.55rem] leading-tight text-white/85"
+            style={{ writingMode: "vertical-rl", maxWidth: "1.4rem", textOverflow: "ellipsis" }}
+          >
+            {book.title}
+          </span>
         </span>
         <div className="h-[6%] w-full" style={{ background: band }} />
 

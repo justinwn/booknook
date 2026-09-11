@@ -445,6 +445,45 @@ body {
   }
 }
 
+/* ---- a nudge arriving: it rises into the stack from behind whatever is
+   already standing there, so a second one reads as joining a queue rather
+   than as the first one having changed. ---- */
+@keyframes nudge-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@layer utilities {
+  .animate-nudge-rise {
+    animation: nudge-rise 320ms var(--ease-gentle) both;
+    transform-origin: bottom left;
+  }
+}
+
+/* ---- the top card of the stack being answered: it lifts away and fades,
+   uncovering the one behind it. Up rather than down, so it reads as being
+   taken off the pile rather than dropped back onto it. ---- */
+@keyframes nudge-dismiss {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+}
+@layer utilities {
+  .animate-nudge-dismiss {
+    animation: nudge-dismiss var(--bubble-out-ms, 320ms) cubic-bezier(0.36, 0, 0.66, 1) forwards;
+  }
+}
+
 /* ---- the login book opening ----
    The page arrives as a closed book held at an angle, straightens, and its
    cover swings open to the left. Three parts, one timeline: the book's own
@@ -555,11 +594,27 @@ body {
   .animate-slot-in,
   .animate-book-settle,
   .animate-shelf-in,
-  .animate-book-flight {
+  .animate-book-flight,
+  .animate-nudge-rise,
+  .animate-nudge-dismiss {
     animation: none;
   }
   /* the sprite holds still, but still delivers its nudges */
   [style*="sprite-step"] {
     animation: none !important;
+  }
+}
+
+/*
+  iOS Safari zooms the whole page in when a field smaller than 16px takes
+  focus, which shunts the surrounding layout around and reads as fields
+  overlapping each other. Touch pointers only, so the typographic scale on
+  a desktop pointer is left where the design put it.
+*/
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
   }
 }

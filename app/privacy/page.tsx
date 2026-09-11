@@ -38,8 +38,10 @@ export default function PrivacyPage() {
             </>,
             <>
               <strong className="font-semibold text-gallery-ink">Your room settings.</strong> The
-              theme you chose, your ambient sound mix, and your nudge timers. The mix and the timers
-              stay in your browser and are not sent anywhere.
+              theme you chose and your nudge timers, both kept on your account so they follow you
+              between devices. Your ambient sound mix is the exception: it stays in this browser and
+              is not sent anywhere, because how loud a room should be is a thing about where you are
+              sitting rather than about you.
             </>,
           ]}
         />

@@ -30,8 +30,10 @@ interface BookEditorScreenProps {
    */
   owned: boolean;
   /**
-   * Adding from the room has no shelf context, so the destination is picked
-   * here. Omitted in edit mode and wherever the shelf is already implied.
+   * Which shelf this book is headed for. Adding from the room has no shelf
+   * context, and editing can move a book between the two — a wishlist title
+   * you have since bought belongs on the owned shelf, where it can carry a
+   * status and a verdict. Omitted wherever the shelf is already implied.
    */
   destination?: {
     shelves: LibraryShelf[];
@@ -235,7 +237,9 @@ export function BookEditorScreen({
         spineBand: spine?.band,
         dewey,
         dimensions: book?.dimensions ?? { heightMm: 198, widthMm: 129, thicknessMm: thickness },
-        rating: rating || undefined,
+        // a verdict belongs to a book you have; moving one to the wishlist
+        // drops it the same way its status and reading dates go
+        rating: owned ? rating || undefined : undefined,
         note: note.trim() || undefined,
         tags: book?.tags ?? [],
         owned,

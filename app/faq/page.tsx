@@ -61,8 +61,21 @@ const ENTRIES: Entry[] = [
     q: "Can I scan a barcode instead of typing the ISBN?",
     a: (
       <>
-        Yes, tap the code icon in the ISBN field to open your camera. Barcode reading only works in
-        Chrome and Edge right now, so on other browsers you will need to type the number.
+        On a larger screen, yes — the code icon in the ISBN field opens your camera. It needs
+        Chrome or Edge, which are the only browsers that can read a barcode today. It is hidden on
+        phones for now, where camera permissions were more trouble than the scan saved, so type the
+        number there instead.
+      </>
+    ),
+  },
+  {
+    q: "I bought a book from my wishlist. Can I move it?",
+    a: (
+      <>
+        Yes. Open the book and pick the other shelf at the top of the editor. A book you own can
+        carry a reading status, the dates you read it and a rating, so those appear as soon as you
+        move it across — and go again if you move it back, since none of them mean anything for a
+        book you have not got yet.
       </>
     ),
   },
@@ -79,9 +92,11 @@ const ENTRIES: Entry[] = [
     q: "What are the nudges, and are you tracking me?",
     a: (
       <>
-        The nudges are timers running in your browser that send your companion over to remind you
-        to drink water, stretch or take a break. Nothing is measured, sent anywhere or sold. There
-        are no ads and no analytics.
+        The nudges are timers that send your companion over to remind you to drink water, stretch
+        or take a break. More than one can be waiting at once, and they stack: answer the one on
+        top and the next comes forward. How often each one asks is saved to your account so it is
+        the same on every device, and that is all that is kept — nothing is measured, sold or sent
+        anywhere else. There are no ads and no analytics.
       </>
     ),
   },

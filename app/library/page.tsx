@@ -176,6 +176,18 @@ export default function LibraryPage() {
   const [flight, setFlight] = useState<{ book: Book; from: DOMRect } | null>(null);
   /** the book currently open in the editor; null means the editor is closed */
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  /**
+   * Which shelf that book is headed for, as ownership. Seeded from the one it
+   * is already on, so leaving the picker alone leaves the book where it was —
+   * changing it is how a wishlist title you have since bought moves across,
+   * picking up a status and a rating on the way.
+   */
+  const [editOwned, setEditOwned] = useState(false);
+
+  function openEditor(book: Book) {
+    setEditingBook(book);
+    setEditOwned(book.owned);
+  }
 
   /**
    * The same ISBN twice is a mis-scan, not a second copy, so the editor asks
@@ -222,9 +234,32 @@ export default function LibraryPage() {
     setOpenPanel((current) => (current === id ? null : id));
   }
 
+  /**
+   * The shelf the book being edited is headed for. Seeded from the one it is
+   * on, so leaving the picker alone leaves the book where it was.
+   */
+  const editShelf = shelves.find((s) => (s.ownership === "owned") === editOwned) ?? shelves[0];
+  const editShelfFull =
+    editingBook &&
+    editOwned !== editingBook.owned &&
+    countOnShelf(editOwned) >= SHELF_CAPACITY
+      ? `${editShelf?.label ?? "That shelf"} is full at ${SHELF_CAPACITY} books. Remove one to make room.`
+      : null;
+
   function handleSaveEdit(draft: BookDraft) {
     if (!editingBook) return;
+    const moved = draft.owned !== editingBook.owned;
+    // the editor already refuses a full shelf; this is the backstop, so a
+    // stale render can never push one past its limit
+    if (moved && countOnShelf(draft.owned) >= SHELF_CAPACITY) return;
+
     setBooks((prev) => prev.map((b) => (b.id === editingBook.id ? { ...b, ...draft } : b)));
+    // follow the book to its new shelf rather than leaving the reader looking
+    // at the one it just left
+    if (moved) {
+      const target = shelves.find((sh) => (sh.ownership === "owned") === draft.owned);
+      if (target) setActiveShelfId(target.id);
+    }
     setEditingBook(null);
   }
 
@@ -345,7 +380,7 @@ export default function LibraryPage() {
           activeShelfId={activeShelfId || shelves[0]?.id}
           onShelfChange={setActiveShelfId}
           focusClass={focusClass}
-          onEditBook={(book) => setEditingBook(book)}
+          onEditBook={openEditor}
           onClose={closeShelf}
           onAddBook={() => {
             setAddShelfId(activeShelfId || shelves[0]?.id || "");
@@ -400,8 +435,15 @@ export default function LibraryPage() {
         <BookEditorScreen
           mode="edit"
           themeId={themeId}
-          owned={editingBook.owned}
+          owned={editOwned}
           book={editingBook}
+          destination={{
+            shelves,
+            value: editShelf?.id ?? "",
+            onChange: (id) =>
+              setEditOwned(shelves.find((s) => s.id === id)?.ownership === "owned"),
+          }}
+          shelfFull={editShelfFull}
           duplicateShelf={(isbn) => duplicateShelf(isbn, editingBook.id)}
           paper={theme.paper}
           onCancel={() => setEditingBook(null)}
